@@ -14,6 +14,7 @@ import java.util.List;
  * @param plan четыре недели
  * @param answers баллы по заданиям
  * @param scoredBy {@code yandex} или {@code heuristic}
+ * @param courses курсы под слабые темы
  */
 public record ReportResponse(
 		String level,
@@ -24,6 +25,7 @@ public record ReportResponse(
 		String summary,
 		List<PlanWeekResponse> plan,
 		List<AnswerScoreResponse> answers,
-		String scoredBy
+		String scoredBy,
+		List<CourseResponse> courses
 ) {
 }

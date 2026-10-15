@@ -4,7 +4,9 @@ import ru.smartlearn.mentor.dialog.Level;
 import ru.smartlearn.mentor.dialog.Role;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Собирает отчёт так, чтобы уровень всегда следовал из баллов.
@@ -36,6 +38,8 @@ public final class AssessmentComposer {
 		int total = scores.stream().mapToInt(AnswerScore::score).sum();
 		int maxScore = scores.size() * 3;
 		Level level = LevelScale.fromTotal(total);
+		List<PlanWeek> basePlan = valid(plan) ? copyPlan(plan) : PlanTemplates.forRole(role);
+		List<Course> courses = CourseCatalog.recommend(scores);
 		return new Assessment(
 				level,
 				total,
@@ -44,9 +48,32 @@ public final class AssessmentComposer {
 				fillStrengths(scores, strengths),
 				fillGaps(scores, gaps),
 				summary == null || summary.isBlank() ? defaultSummary(level) : summary.trim(),
-				valid(plan) ? copyPlan(plan) : PlanTemplates.forRole(role),
-				scoredBy
+				attachCourses(basePlan, courses),
+				scoredBy,
+				courses
 		);
+	}
+
+	/**
+	 * Дописывает в неделю плана шаг с подобранным курсом.
+	 *
+	 * @param plan уже проверенный план
+	 * @param courses курсы слабых тем
+	 * @return план с прикреплёнными курсами
+	 */
+	private List<PlanWeek> attachCourses(List<PlanWeek> plan, List<Course> courses) {
+		Map<Integer, List<String>> extra = new LinkedHashMap<>();
+		for (Course course : courses) {
+			extra.computeIfAbsent(course.week(), ignored -> new ArrayList<>())
+					.add("Пройти курс: " + course.title() + " (" + course.provider() + ").");
+		}
+		List<PlanWeek> attached = new ArrayList<>();
+		for (PlanWeek week : plan) {
+			List<String> steps = new ArrayList<>(week.steps());
+			steps.addAll(extra.getOrDefault(week.week(), List.of()));
+			attached.add(new PlanWeek(week.week(), week.title(), List.copyOf(steps)));
+		}
+		return List.copyOf(attached);
 	}
 
 	/**

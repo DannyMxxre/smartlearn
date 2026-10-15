@@ -12,6 +12,7 @@ import ru.smartlearn.mentor.question.QuestionBank;
 import ru.smartlearn.mentor.question.RoleParser;
 import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
+import ru.smartlearn.mentor.score.Course;
 import ru.smartlearn.mentor.score.PlanWeek;
 import ru.smartlearn.mentor.score.StoredAnswer;
 
@@ -167,7 +168,7 @@ public class ChatService {
 	}
 
 	/**
-	 * Собирает человекочитаемый отчёт и план.
+	 * Собирает отчёт в Markdown, чтобы чат показал заголовки, списки и ссылки.
 	 *
 	 * @param assessment результат оценки
 	 * @return текст для ленты чата
@@ -175,23 +176,32 @@ public class ChatService {
 	private String render(Assessment assessment) {
 		StringBuilder text = new StringBuilder();
 		text.append("Диагностика готова.\n\n");
-		text.append("Уровень: ").append(assessment.level().title()).append('\n');
-		text.append("Баллы: ").append(assessment.score()).append(" из ").append(assessment.maxScore()).append("\n\n");
+		text.append("**Уровень:** ").append(assessment.level().title()).append("  \n");
+		text.append("**Баллы:** ").append(assessment.score()).append(" из ").append(assessment.maxScore()).append("\n\n");
 		text.append(assessment.summary()).append("\n\n");
-		text.append("Сильные стороны:\n");
+		text.append("### Сильные стороны\n");
 		for (String strength : assessment.strengths()) {
 			text.append("- ").append(strength).append('\n');
 		}
-		text.append("\nЧто подтянуть:\n");
+		text.append("\n### Что подтянуть\n");
 		for (String gap : assessment.gaps()) {
 			text.append("- ").append(gap).append('\n');
 		}
-		text.append("\nПлан на месяц:\n");
+		text.append("\n### План на месяц\n");
 		for (PlanWeek week : assessment.plan()) {
-			text.append("Неделя ").append(week.week()).append(". ").append(week.title()).append('\n');
+			text.append("\n**Неделя ").append(week.week()).append(". ").append(week.title()).append("**\n");
 			for (String step : week.steps()) {
 				text.append("- ").append(step).append('\n');
 			}
+		}
+		text.append("\n### Курсы\n");
+		if (assessment.courses().isEmpty()) {
+			text.append("- Явных пробелов нет, отдельные курсы не нужны.\n");
+		}
+		for (Course course : assessment.courses()) {
+			text.append("- **").append(course.free() ? "Бесплатно" : "Платно").append(".** ");
+			text.append("[").append(course.title()).append("](").append(course.url()).append(")");
+			text.append(" — ").append(course.provider()).append(", неделя ").append(course.week()).append('\n');
 		}
 		if ("heuristic".equals(assessment.scoredBy())) {
 			text.append("\nОценка посчитана локально, без YandexGPT. Уровень выведен из баллов.");
@@ -263,6 +273,18 @@ public class ChatService {
 		for (AnswerScore score : assessment.answers()) {
 			answers.add(new AnswerScoreResponse(score.questionId(), score.title(), score.score(), score.reason()));
 		}
+		List<CourseResponse> courses = new ArrayList<>();
+		for (Course course : assessment.courses()) {
+			courses.add(new CourseResponse(
+					course.questionId(),
+					course.gapTitle(),
+					course.title(),
+					course.provider(),
+					course.free(),
+					course.url(),
+					course.week()
+			));
+		}
 		return new ReportResponse(
 				assessment.level().title(),
 				assessment.score(),
@@ -272,7 +294,8 @@ public class ChatService {
 				assessment.summary(),
 				List.copyOf(plan),
 				List.copyOf(answers),
-				assessment.scoredBy()
+				assessment.scoredBy(),
+				List.copyOf(courses)
 		);
 	}
 }

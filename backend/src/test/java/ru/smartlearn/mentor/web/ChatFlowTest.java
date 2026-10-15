@@ -42,6 +42,10 @@ class ChatFlowTest {
 		assertEquals("Новичок", report.report().level());
 		assertEquals(0, report.report().score());
 		assertEquals("heuristic", report.report().scoredBy());
+		assertTrue(report.report().courses().stream().anyMatch(course -> course.free()));
+		assertTrue(report.report().courses().stream().anyMatch(course -> !course.free()));
+		assertTrue(report.report().plan().stream().anyMatch(week ->
+				week.steps().stream().anyMatch(step -> step.startsWith("Пройти курс:"))));
 	}
 
 	/**
@@ -53,6 +57,7 @@ class ChatFlowTest {
 		assertEquals("Продвинутый", report.report().level());
 		assertEquals(12, report.report().score());
 		assertEquals(4, report.report().plan().size());
+		assertTrue(report.report().courses().isEmpty());
 	}
 
 	/**

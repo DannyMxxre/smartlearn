@@ -18,6 +18,7 @@ import java.util.List;
  * @param summary короткий вывод
  * @param plan шаги на четыре недели
  * @param scoredBy {@code yandex} или {@code heuristic}
+ * @param courses курсы под слабые темы
  */
 public record Assessment(
 		Level level,
@@ -28,6 +29,7 @@ public record Assessment(
 		List<String> gaps,
 		String summary,
 		List<PlanWeek> plan,
-		String scoredBy
+		String scoredBy,
+		List<Course> courses
 ) {
 }
