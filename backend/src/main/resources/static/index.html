@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ИИ-Наставник</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .chat-scroll::-webkit-scrollbar { width: 6px; }
+    .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    .message-user { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .message-ai { background: #1f2937; border: 1px solid #374151; }
+    .sidebar-card { background: #111827; border: 1px solid #1f2937; }
+    .progress-bar { transition: width 0.5s ease; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen flex overflow-hidden">
+
+  <aside class="w-80 bg-gray-900 border-r border-gray-800 flex flex-col hidden md:flex">
+    <div class="p-5 border-b border-gray-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+          <h1 class="font-semibold text-lg">ИИ-Наставник</h1>
+          <p class="text-xs text-gray-400">S8 Capital • Хакатон Demo</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-5 space-y-4">
+      <div class="sidebar-card rounded-xl p-4">
+        <div class="text-xs text-gray-400 mb-1">Роль</div>
+        <div class="font-medium flex items-center gap-2">
+          <i class="fa-solid fa-user-tie text-blue-400"></i>
+          <span id="current-role">Не выбрана</span>
+        </div>
+      </div>
+
+      <div class="sidebar-card rounded-xl p-4">
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-xs text-gray-400">Уровень</div>
+          <div class="text-sm font-semibold text-emerald-400" id="level-badge">—</div>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2">
+          <div id="level-bar" class="progress-bar bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full" style="width: 0%"></div>
+        </div>
+        <div id="score-label" class="text-xs text-gray-500 mt-1 text-right">0 / 12</div>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-5 chat-scroll">
+      <div>
+        <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Пробелы в знаниях
+        </h3>
+        <div id="gaps-list" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-map text-amber-400"></i> План на месяц
+        </h3>
+        <div id="roadmap-list" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-purple-400"></i> Курсы
+        </h3>
+        <div id="courses-list" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-gray-800">
+      <div class="flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span id="ai-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+          <span id="ai-status-text" class="text-gray-400">проверяю</span>
+        </div>
+        <span class="text-gray-600">YandexGPT</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 flex flex-col">
+    <header class="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-gray-900/50 backdrop-blur">
+      <div>
+        <div class="font-medium">Диагностика навыков</div>
+        <div id="phase-label" class="text-xs text-gray-400">Подключение</div>
+      </div>
+      <button id="restart" type="button" class="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-xs hover:bg-gray-700">
+        Новая сессия
+      </button>
+    </header>
+
+    <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-6 chat-scroll"></div>
+
+    <div class="p-4 border-t border-gray-800 bg-gray-900/80">
+      <div class="max-w-3xl mx-auto">
+        <div class="flex items-end gap-3 bg-gray-800 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-blue-500/50">
+          <textarea
+            id="user-input"
+            rows="1"
+            placeholder="Напишите сообщение..."
+            class="flex-1 bg-transparent resize-none outline-none px-3 py-2 text-sm max-h-32"
+          ></textarea>
+          <button id="send" type="button" class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition disabled:opacity-40">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+        <div class="text-xs text-gray-500 text-center mt-2">
+          Уровень считается по баллам. Курсы подключим следующим шагом.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("user-input");
+    const sendEl = document.getElementById("send");
+    let sessionId = null;
+    let busy = false;
+
+    const phaseNames = {
+      intro: "Знакомство",
+      diagnosis: "Диагностика",
+      report: "Отчёт и план"
+    };
+
+    document.getElementById("restart").addEventListener("click", () => startSession());
+    sendEl.addEventListener("click", () => submitInput());
+    inputEl.addEventListener("input", () => {
+      inputEl.style.height = "auto";
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 128) + "px";
+    });
+    inputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        submitInput();
+      }
+    });
+    startSession();
+    resetSidebar();
+
+    function startSession() {
+      sessionId = null;
+      messagesEl.replaceChildren();
+      resetSidebar();
+      document.getElementById("phase-label").textContent = "Подключение";
+      refreshYandexStatus();
+      postMessage("", false);
+    }
+
+    function submitInput() {
+      const text = inputEl.value.trim();
+      if (!text) {
+        return;
+      }
+      inputEl.value = "";
+      inputEl.style.height = "auto";
+      postMessage(text, true);
+    }
+
+    async function postMessage(text, showUser) {
+      if (busy) {
+        return;
+      }
+      busy = true;
+      sendEl.disabled = true;
+      if (showUser) {
+        addMessage(text, true);
+      }
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, message: text })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          addMessage(data.error || "Бэкенд не принял сообщение.", false);
+          return;
+        }
+        sessionId = data.sessionId;
+        addMessage(data.reply, false, data.phase === "intro" && !data.role);
+        applyState(data);
+      } catch (error) {
+        addMessage("Не удалось связаться с бэкендом. Запусти сервер и обнови страницу.", false);
+        setStatus("off", "не удалось проверить");
+      } finally {
+        busy = false;
+        sendEl.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    function addMessage(text, isUser, withRoles) {
+      const row = document.createElement("div");
+      row.className = "flex gap-4 max-w-3xl" + (isUser ? " ml-auto flex-row-reverse" : "");
+
+      const avatar = document.createElement("div");
+      avatar.className = "w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center " +
+        (isUser ? "bg-blue-600" : "bg-gradient-to-br from-orange-500 to-amber-500");
+      const icon = document.createElement("i");
+      icon.className = "fa-solid text-sm " + (isUser ? "fa-user" : "fa-robot");
+      avatar.appendChild(icon);
+
+      const bubble = document.createElement("div");
+      bubble.className = (isUser ? "message-user rounded-tr-sm" : "message-ai rounded-tl-sm") +
+        " rounded-2xl px-5 py-3.5 max-w-[85%]";
+      const paragraph = document.createElement("p");
+      paragraph.className = "whitespace-pre-wrap";
+      paragraph.textContent = text;
+      bubble.appendChild(paragraph);
+      if (withRoles) {
+        bubble.appendChild(roleButtons());
+      }
+
+      row.append(avatar, bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function roleButtons() {
+      const actions = document.createElement("div");
+      actions.className = "flex gap-2 mt-3";
+      actions.dataset.roleActions = "true";
+      for (const role of ["Аналитик", "Разработчик"]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = role;
+        button.className = role === "Аналитик"
+          ? "px-4 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 text-sm transition"
+          : "px-4 py-2 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-sm transition";
+        button.addEventListener("click", () => {
+          actions.remove();
+          postMessage(role, true);
+        });
+        actions.appendChild(button);
+      }
+      return actions;
+    }
+
+    function applyState(data) {
+      const role = data.role === "analyst" ? "Аналитик" : data.role === "developer" ? "Разработчик" : "Не выбрана";
+      document.getElementById("current-role").textContent = role;
+      if (data.role) {
+        document.querySelectorAll("[data-role-actions]").forEach((node) => node.remove());
+      }
+
+      let phase = phaseNames[data.phase] || "Диалог";
+      if (data.phase === "diagnosis" && data.questionNumber) {
+        phase = "Диагностика · задание " + data.questionNumber + " из " + data.questionCount;
+      }
+      document.getElementById("phase-label").textContent = phase;
+
+      if (data.report) {
+        fillReport(data.report);
+      }
+    }
+
+    function fillReport(report) {
+      document.getElementById("level-badge").textContent = report.level;
+      const maxScore = report.maxScore || 12;
+      const width = Math.max(0, Math.min(100, Math.round((report.score / maxScore) * 100)));
+      document.getElementById("level-bar").style.width = width + "%";
+      document.getElementById("score-label").textContent = report.score + " / " + maxScore;
+
+      fillCards(document.getElementById("gaps-list"), report.gaps, (text) => {
+        const card = document.createElement("div");
+        card.className = "sidebar-card rounded-lg p-3 border-l-4 border-rose-500";
+        const title = document.createElement("div");
+        title.className = "font-medium";
+        title.textContent = text;
+        card.appendChild(title);
+        return card;
+      }, "Пробелов нет");
+
+      fillCards(document.getElementById("roadmap-list"), report.plan, (week) => {
+        const card = document.createElement("div");
+        card.className = "sidebar-card rounded-lg p-3";
+        const title = document.createElement("div");
+        title.className = "font-medium";
+        title.textContent = week.week + ". " + week.title;
+        card.appendChild(title);
+        const steps = document.createElement("ul");
+        steps.className = "text-xs text-gray-400 mt-1.5 space-y-1";
+        for (const step of week.steps || []) {
+          const item = document.createElement("li");
+          item.textContent = step;
+          steps.appendChild(item);
+        }
+        card.appendChild(steps);
+        return card;
+      }, "План появится после диагностики");
+    }
+
+    async function refreshYandexStatus() {
+      try {
+        const response = await fetch("/api/status");
+        if (!response.ok) {
+          setStatus("off", "не удалось проверить");
+          return;
+        }
+        const data = await response.json();
+        if (data.yandexConnected) {
+          setStatus("on", "подключено");
+        } else {
+          setStatus("off", "не подключено");
+        }
+      } catch (error) {
+        setStatus("off", "не удалось проверить");
+      }
+    }
+
+    function fillCards(container, items, render, emptyText) {
+      container.replaceChildren();
+      if (!items || items.length === 0) {
+        container.appendChild(note(emptyText));
+        return;
+      }
+      for (const item of items) {
+        container.appendChild(render(item));
+      }
+    }
+
+    function resetSidebar() {
+      document.getElementById("current-role").textContent = "Не выбрана";
+      document.getElementById("level-badge").textContent = "—";
+      document.getElementById("level-bar").style.width = "0%";
+      document.getElementById("score-label").textContent = "0 / 12";
+      document.getElementById("gaps-list").replaceChildren(note("Появятся после диагностики"));
+      document.getElementById("roadmap-list").replaceChildren(note("Появится после диагностики"));
+      document.getElementById("courses-list").replaceChildren(note("Подберём курсы следующим шагом"));
+    }
+
+    function note(text) {
+      const card = document.createElement("div");
+      card.className = "sidebar-card rounded-lg p-3 text-gray-500 text-xs";
+      card.textContent = text;
+      return card;
+    }
+
+    function setStatus(kind, text) {
+      const dot = document.getElementById("ai-status-dot");
+      const label = document.getElementById("ai-status-text");
+      const colors = {
+        wait: "bg-gray-500",
+        live: "bg-sky-400",
+        on: "bg-emerald-500",
+        local: "bg-amber-400",
+        off: "bg-red-500"
+      };
+      dot.className = "w-2.5 h-2.5 rounded-full " + (colors[kind] || colors.wait);
+      label.textContent = text;
+      label.className = kind === "on" ? "text-emerald-400" : kind === "off" ? "text-red-300" : "text-gray-400";
+    }
+  </script>
+</body>
+</html>
