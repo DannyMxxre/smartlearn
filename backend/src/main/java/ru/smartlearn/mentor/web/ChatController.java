@@ -32,6 +32,6 @@ public class ChatController {
 	 */
 	@PostMapping
 	public ChatResponse chat(@RequestBody ChatRequest request) {
-		return chatService.chat(request.sessionId(), request.message());
+		return chatService.chat(request.sessionId(), request.message(), request.action(), request.questionId());
 	}
 }

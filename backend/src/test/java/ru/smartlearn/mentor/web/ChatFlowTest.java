@@ -74,6 +74,42 @@ class ChatFlowTest {
 	}
 
 	/**
+	 * Зачёт в тренажёре поднимает балл темы и убирает её из пробелов.
+	 */
+	@Test
+	void passedPracticeRaisesScoreAndClearsGap() {
+		ChatService service = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatResponse report = finish(service, "не знаю");
+		String gapId = report.report().answers().getFirst().questionId();
+		ChatResponse task = service.chat(report.sessionId(), "", "practice", gapId);
+		assertEquals("practice", task.phase());
+		assertTrue(task.reply().contains("Тренажёр"));
+		ChatResponse cleared = service.chat(report.sessionId(), STRONG);
+		assertEquals("report", cleared.phase());
+		assertEquals(gapId, cleared.clearedQuestionId());
+		assertTrue(cleared.report().score() > report.report().score());
+		assertTrue(cleared.report().answers().stream()
+				.anyMatch(answer -> answer.questionId().equals(gapId) && answer.score() >= 2));
+		assertTrue(cleared.report().answers().stream()
+				.noneMatch(answer -> answer.questionId().equals(gapId) && answer.score() <= 1));
+	}
+
+	/**
+	 * Слабая попытка оставляет пробел и балл на месте.
+	 */
+	@Test
+	void weakPracticeKeepsTheGap() {
+		ChatService service = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatResponse report = finish(service, "не знаю");
+		String gapId = report.report().answers().getFirst().questionId();
+		service.chat(report.sessionId(), "", "practice", gapId);
+		ChatResponse failed = service.chat(report.sessionId(), "не знаю");
+		assertEquals("practice", failed.phase());
+		assertNull(failed.clearedQuestionId());
+		assertEquals(report.report().score(), failed.report().score());
+	}
+
+	/**
 	 * Непонятная роль не пускает дальше знакомства.
 	 */
 	@Test

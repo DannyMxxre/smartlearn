@@ -21,6 +21,8 @@ public final class MentorSession {
 	private String skills = "";
 	private int questionIndex;
 	private Assessment assessment;
+	private String practiceQuestionId;
+	private String clearedQuestionId;
 
 	/**
 	 * Создаёт пустую сессию с уже выданным идентификатором.
@@ -184,5 +186,53 @@ public final class MentorSession {
 	public void complete(Assessment assessment) {
 		this.assessment = assessment;
 		this.phase = Phase.DONE;
+	}
+
+	/**
+	 * Подменяет отчёт после тренажёра, не меняя шаг сценария.
+	 *
+	 * @param assessment пересчитанный отчёт
+	 */
+	public void replaceAssessment(Assessment assessment) {
+		this.assessment = assessment;
+	}
+
+	/**
+	 * Запоминает тему, которую человек сейчас отрабатывает.
+	 *
+	 * @param practiceQuestionId код задания или {@code null}
+	 */
+	public void setPracticeQuestionId(String practiceQuestionId) {
+		this.practiceQuestionId = practiceQuestionId;
+	}
+
+	/**
+	 * Возвращает тему текущего тренажёра.
+	 *
+	 * @return код задания или {@code null}
+	 */
+	public String practiceQuestionId() {
+		return practiceQuestionId;
+	}
+
+	/**
+	 * Помечает пробел, который только что закрыли.
+	 * Интерфейс прочитает это один раз и проиграет анимацию.
+	 *
+	 * @param questionId код закрытого задания
+	 */
+	public void markCleared(String questionId) {
+		this.clearedQuestionId = questionId;
+	}
+
+	/**
+	 * Отдаёт и забывает код закрытого пробела.
+	 *
+	 * @return код задания или {@code null}
+	 */
+	public String consumeCleared() {
+		String questionId = clearedQuestionId;
+		clearedQuestionId = null;
+		return questionId;
 	}
 }

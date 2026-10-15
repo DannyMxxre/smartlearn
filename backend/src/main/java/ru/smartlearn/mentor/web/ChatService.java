@@ -1,5 +1,6 @@
 package ru.smartlearn.mentor.web;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.smartlearn.mentor.dialog.EmptyMessageException;
 import ru.smartlearn.mentor.dialog.MentorSession;
@@ -7,13 +8,17 @@ import ru.smartlearn.mentor.dialog.Phase;
 import ru.smartlearn.mentor.dialog.Role;
 import ru.smartlearn.mentor.dialog.SessionStore;
 import ru.smartlearn.mentor.llm.AssessmentService;
+import ru.smartlearn.mentor.llm.PracticeCoach;
 import ru.smartlearn.mentor.question.Question;
 import ru.smartlearn.mentor.question.QuestionBank;
 import ru.smartlearn.mentor.question.RoleParser;
 import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
+import ru.smartlearn.mentor.score.AssessmentComposer;
 import ru.smartlearn.mentor.score.Course;
+import ru.smartlearn.mentor.score.PlanTemplates;
 import ru.smartlearn.mentor.score.PlanWeek;
+import ru.smartlearn.mentor.score.PracticeGrade;
 import ru.smartlearn.mentor.score.StoredAnswer;
 
 import java.util.ArrayList;
@@ -29,6 +34,8 @@ public class ChatService {
 	private final SessionStore sessionStore;
 	private final AssessmentService assessmentService;
 	private final QuestionBank questionBank;
+	private final PracticeCoach practiceCoach;
+	private final AssessmentComposer composer = new AssessmentComposer();
 
 	/**
 	 * Собирает сервис диалога.
@@ -36,11 +43,30 @@ public class ChatService {
 	 * @param sessionStore хранилище сессий
 	 * @param assessmentService подсчёт отчёта
 	 * @param questionBank задания по ролям
+	 * @param practiceCoach тренажёр по пробелам
 	 */
-	public ChatService(SessionStore sessionStore, AssessmentService assessmentService, QuestionBank questionBank) {
+	@Autowired
+	public ChatService(
+			SessionStore sessionStore,
+			AssessmentService assessmentService,
+			QuestionBank questionBank,
+			PracticeCoach practiceCoach
+	) {
 		this.sessionStore = sessionStore;
 		this.assessmentService = assessmentService;
 		this.questionBank = questionBank;
+		this.practiceCoach = practiceCoach;
+	}
+
+	/**
+	 * Собирает сервис для тестов с локальным тренажёром.
+	 *
+	 * @param sessionStore хранилище сессий
+	 * @param assessmentService подсчёт отчёта
+	 * @param questionBank задания по ролям
+	 */
+	public ChatService(SessionStore sessionStore, AssessmentService assessmentService, QuestionBank questionBank) {
+		this(sessionStore, assessmentService, questionBank, PracticeCoach.heuristicOnly());
 	}
 
 	/**
@@ -52,8 +78,26 @@ public class ChatService {
 	 * @return реплика наставника и состояние
 	 */
 	public ChatResponse chat(String sessionId, String message) {
+		return chat(sessionId, message, null, null);
+	}
+
+	/**
+	 * Принимает реплику, старт тренажёра или ответ на практику.
+	 *
+	 * @param sessionId идентификатор или пусто для новой сессии
+	 * @param message текст человека
+	 * @param action {@code practice}, чтобы открыть тренажёр
+	 * @param questionId код пробела
+	 * @return реплика наставника и состояние
+	 */
+	public ChatResponse chat(String sessionId, String message, String action, String questionId) {
 		MentorSession session = open(sessionId);
 		synchronized (session) {
+			if ("practice".equals(action)) {
+				String reply = startPractice(session, questionId);
+				session.addTurn("assistant", reply);
+				return respond(session, reply);
+			}
 			String text = message == null ? "" : message.trim();
 			if (text.isEmpty()) {
 				if (session.turns().isEmpty()) {
@@ -69,7 +113,8 @@ public class ChatService {
 				case ASK_GOAL -> onGoal(session, text);
 				case ASK_SKILLS -> onSkills(session, text);
 				case DIAGNOSIS -> onDiagnosis(session, text);
-				case DONE -> "Диагностика уже завершена. Начни новую сессию, чтобы пройти её ещё раз.";
+				case PRACTICE -> onPractice(session, text);
+				case DONE -> "Диагностика уже завершена. Закрой пробел кнопкой «Отработать» в боковой панели или начни новую сессию.";
 			};
 			session.addTurn("assistant", reply);
 			return respond(session, reply);
@@ -156,6 +201,107 @@ public class ChatService {
 	}
 
 	/**
+	 * Открывает тренажёр по одному ещё не закрытому пробелу.
+	 *
+	 * @param session сессия с отчётом
+	 * @param questionId код темы
+	 * @return текст задания
+	 */
+	private String startPractice(MentorSession session, String questionId) {
+		if (session.assessment() == null) {
+			return "Сначала закончи диагностику. Тренажёр открывается по пробелам из отчёта.";
+		}
+		AnswerScore gap = findScore(session, questionId);
+		if (gap == null) {
+			return "Такой темы в отчёте нет.";
+		}
+		if (gap.score() > 1) {
+			return "Тема «" + gap.title() + "» уже закрыта.";
+		}
+		String task = practiceCoach.taskFor(questionId);
+		if (task.isBlank()) {
+			return "Для этой темы нет упражнения.";
+		}
+		session.setPhase(Phase.PRACTICE);
+		session.setPracticeQuestionId(questionId);
+		return "### Тренажёр: " + gap.title() + "\n\n" + task + "\n\nОтвет зачтётся, если в нём будут конкретные действия и проверка результата.";
+	}
+
+	/**
+	 * Принимает попытку и при зачёте поднимает балл темы.
+	 *
+	 * @param session сессия в тренажёре
+	 * @param text ответ человека
+	 * @return разбор попытки
+	 */
+	private String onPractice(MentorSession session, String text) {
+		AnswerScore gap = findScore(session, session.practiceQuestionId());
+		if (gap == null) {
+			session.setPhase(Phase.DONE);
+			return "Тренажёр сбился. Вернись к отчёту и выбери пробел ещё раз.";
+		}
+		String task = practiceCoach.taskFor(gap.questionId());
+		PracticeGrade grade = practiceCoach.grade(session.role(), gap.title(), task, text);
+		if (!grade.passed()) {
+			return "### Пока не зачёт\n\n" + grade.feedback() + "\n\nДопиши ответ: нужны действия и способ проверить качество. Пробел пока остаётся.";
+		}
+		int raised = Math.max(gap.score(), Math.max(2, grade.score()));
+		raiseScore(session, gap.questionId(), raised, grade.feedback());
+		session.setPhase(Phase.DONE);
+		session.setPracticeQuestionId(null);
+		session.markCleared(gap.questionId());
+		return "### Зачёт\n\n" + grade.feedback() + "\n\nБалл по теме «" + gap.title() + "» вырос до **" + raised + "**. Пробел закрыт.";
+	}
+
+	/**
+	 * Ищет оценку темы в текущем отчёте.
+	 *
+	 * @param session сессия с отчётом
+	 * @param questionId код задания
+	 * @return оценка или {@code null}
+	 */
+	private AnswerScore findScore(MentorSession session, String questionId) {
+		if (session.assessment() == null || questionId == null) {
+			return null;
+		}
+		for (AnswerScore score : session.assessment().answers()) {
+			if (score.questionId().equals(questionId)) {
+				return score;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Поднимает балл одной темы и заново собирает уровень, пробелы и курсы.
+	 *
+	 * @param session сессия с отчётом
+	 * @param questionId тема
+	 * @param raised новый балл
+	 * @param feedback обоснование зачёта
+	 */
+	private void raiseScore(MentorSession session, String questionId, int raised, String feedback) {
+		Assessment current = session.assessment();
+		ArrayList<AnswerScore> scores = new ArrayList<>();
+		for (AnswerScore score : current.answers()) {
+			if (score.questionId().equals(questionId)) {
+				scores.add(new AnswerScore(score.questionId(), score.title(), raised, feedback));
+			} else {
+				scores.add(score);
+			}
+		}
+		session.replaceAssessment(composer.compose(
+				session.role(),
+				scores,
+				List.of(),
+				List.of(),
+				"",
+				PlanTemplates.forRole(session.role()),
+				current.scoredBy()
+		));
+	}
+
+	/**
 	 * Формирует текст задания с номером.
 	 *
 	 * @param question задание
@@ -238,7 +384,8 @@ public class ChatService {
 				roleName(session.role()),
 				questionNumber,
 				questionCount,
-				report(session.assessment())
+				report(session.assessment()),
+				session.consumeCleared()
 		);
 	}
 

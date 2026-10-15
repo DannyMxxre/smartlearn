@@ -54,7 +54,7 @@ public class HeuristicAssessor implements Assessor {
 	 * @param answer текст ответа
 	 * @return балл от 0 до 3
 	 */
-	int scoreAnswer(String answer) {
+	public int scoreAnswer(String answer) {
 		String text = answer == null ? "" : answer.toLowerCase(Locale.ROOT).trim();
 		int signals = countSignals(text);
 		if (text.length() < 40 || (signals == 0 && SHRUG.matcher(text).find() && text.length() < 160)) {

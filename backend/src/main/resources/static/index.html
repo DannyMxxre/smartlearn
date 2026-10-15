@@ -45,7 +45,22 @@
     }
     .message-ai .md hr { border: 0; border-top: 1px solid #374151; margin: 0.95em 0; }
     .sidebar-card { background: #111827; border: 1px solid #1f2937; }
-    .progress-bar { transition: width 0.5s ease; }
+    .progress-bar { transition: width 0.55s ease; }
+    .gap-leave {
+      overflow: hidden;
+      pointer-events: none;
+      animation: gap-out 0.55s ease forwards;
+    }
+    @keyframes gap-out {
+      0% { opacity: 1; transform: translateX(0); }
+      100% { opacity: 0; transform: translateX(18px); }
+    }
+    .score-pop { animation: score-pop 0.6s ease; }
+    @keyframes score-pop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body class="bg-gray-950 text-gray-100 h-screen flex overflow-hidden">
@@ -72,7 +87,7 @@
         </div>
       </div>
 
-      <div class="sidebar-card rounded-xl p-4">
+      <div id="level-card" class="sidebar-card rounded-xl p-4">
         <div class="flex justify-between items-center mb-2">
           <div class="text-xs text-gray-400">Уровень</div>
           <div class="text-sm font-semibold text-emerald-400" id="level-badge">—</div>
@@ -161,6 +176,7 @@
     const phaseNames = {
       intro: "Знакомство",
       diagnosis: "Диагностика",
+      practice: "Тренажёр",
       report: "Отчёт и план"
     };
 
@@ -198,7 +214,7 @@
       postMessage(text, true);
     }
 
-    async function postMessage(text, showUser) {
+    async function postMessage(text, showUser, extra) {
       if (busy) {
         return;
       }
@@ -211,7 +227,12 @@
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, message: text })
+          body: JSON.stringify({
+            sessionId,
+            message: text,
+            action: extra && extra.action ? extra.action : null,
+            questionId: extra && extra.questionId ? extra.questionId : null
+          })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -220,7 +241,7 @@
         }
         sessionId = data.sessionId;
         addMessage(data.reply, false, data.phase === "intro" && !data.role);
-        applyState(data);
+        await applyState(data);
       } catch (error) {
         addMessage("Не удалось связаться с бэкендом. Запусти сервер и обнови страницу.", false);
         setStatus("off", "не удалось проверить");
@@ -297,7 +318,7 @@
       return actions;
     }
 
-    function applyState(data) {
+    async function applyState(data) {
       const role = data.role === "analyst" ? "Аналитик" : data.role === "developer" ? "Разработчик" : "Не выбрана";
       document.getElementById("current-role").textContent = role;
       if (data.role) {
@@ -311,8 +332,26 @@
       document.getElementById("phase-label").textContent = phase;
 
       if (data.report) {
+        if (data.clearedQuestionId) {
+          await dismissGap(data.clearedQuestionId);
+          document.getElementById("level-card").classList.remove("score-pop");
+          void document.getElementById("level-card").offsetWidth;
+          document.getElementById("level-card").classList.add("score-pop");
+        }
         fillReport(data.report);
       }
+    }
+
+    function dismissGap(questionId) {
+      const card = document.querySelector('[data-question-id="' + questionId + '"]');
+      if (!card) {
+        return Promise.resolve();
+      }
+      card.classList.add("gap-leave");
+      return new Promise((resolve) => {
+        card.addEventListener("animationend", () => resolve(), { once: true });
+        setTimeout(resolve, 700);
+      });
     }
 
     function fillReport(report) {
@@ -322,15 +361,7 @@
       document.getElementById("level-bar").style.width = width + "%";
       document.getElementById("score-label").textContent = report.score + " / " + maxScore;
 
-      fillCards(document.getElementById("gaps-list"), report.gaps, (text) => {
-        const card = document.createElement("div");
-        card.className = "sidebar-card rounded-lg p-3 border-l-4 border-rose-500";
-        const title = document.createElement("div");
-        title.className = "font-medium";
-        title.textContent = text;
-        card.appendChild(title);
-        return card;
-      }, "Пробелов нет");
+      fillGapCards(report.answers);
 
       fillCards(document.getElementById("roadmap-list"), report.plan, (week) => {
         const card = document.createElement("div");
@@ -350,6 +381,34 @@
         return card;
       }, "План появится после диагностики");
       fillCourses(report.courses);
+    }
+
+    function fillGapCards(answers) {
+      const container = document.getElementById("gaps-list");
+      const gaps = (answers || []).filter((answer) => answer.score <= 1);
+      container.replaceChildren();
+      if (gaps.length === 0) {
+        container.appendChild(note("Пробелов нет"));
+        return;
+      }
+      for (const gap of gaps) {
+        const card = document.createElement("div");
+        card.className = "sidebar-card rounded-lg p-3 border-l-4 border-rose-500";
+        card.dataset.questionId = gap.questionId;
+        const title = document.createElement("div");
+        title.className = "font-medium";
+        title.textContent = gap.title;
+        const reason = document.createElement("div");
+        reason.className = "text-xs text-rose-300 mt-1";
+        reason.textContent = gap.score + " из 3 · " + (gap.reason || "нужно подтянуть");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mt-2 text-xs px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-200 hover:bg-rose-500/30";
+        button.textContent = "Отработать";
+        button.addEventListener("click", () => postMessage("", false, { action: "practice", questionId: gap.questionId }));
+        card.append(title, reason, button);
+        container.appendChild(card);
+      }
     }
 
     function fillCourses(courses) {
