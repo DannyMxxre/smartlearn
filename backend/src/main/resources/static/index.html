@@ -45,22 +45,7 @@
     }
     .message-ai .md hr { border: 0; border-top: 1px solid #374151; margin: 0.95em 0; }
     .sidebar-card { background: #111827; border: 1px solid #1f2937; }
-    .progress-bar { transition: width 0.55s ease; }
-    .gap-leave {
-      overflow: hidden;
-      pointer-events: none;
-      animation: gap-out 0.55s ease forwards;
-    }
-    @keyframes gap-out {
-      0% { opacity: 1; transform: translateX(0); }
-      100% { opacity: 0; transform: translateX(18px); }
-    }
-    .score-pop { animation: score-pop 0.6s ease; }
-    @keyframes score-pop {
-      0% { transform: scale(1); }
-      40% { transform: scale(1.06); }
-      100% { transform: scale(1); }
-    }
+    .progress-bar { transition: width 0.5s ease; }
   </style>
 </head>
 <body class="bg-gray-950 text-gray-100 h-screen flex overflow-hidden">
@@ -176,7 +161,6 @@
     const phaseNames = {
       intro: "Знакомство",
       diagnosis: "Диагностика",
-      practice: "Тренажёр",
       report: "Отчёт и план"
     };
 
@@ -214,7 +198,7 @@
       postMessage(text, true);
     }
 
-    async function postMessage(text, showUser, extra) {
+    async function postMessage(text, showUser) {
       if (busy) {
         return;
       }
@@ -227,12 +211,7 @@
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            message: text,
-            action: extra && extra.action ? extra.action : null,
-            questionId: extra && extra.questionId ? extra.questionId : null
-          })
+          body: JSON.stringify({ sessionId, message: text })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -241,7 +220,7 @@
         }
         sessionId = data.sessionId;
         addMessage(data.reply, false, data.phase === "intro" && !data.role);
-        await applyState(data);
+        applyState(data);
       } catch (error) {
         addMessage("Не удалось связаться с бэкендом. Запусти сервер и обнови страницу.", false);
         setStatus("off", "не удалось проверить");
@@ -318,7 +297,7 @@
       return actions;
     }
 
-    async function applyState(data) {
+    function applyState(data) {
       const role = data.role === "analyst" ? "Аналитик" : data.role === "developer" ? "Разработчик" : "Не выбрана";
       document.getElementById("current-role").textContent = role;
       if (data.role) {
@@ -332,26 +311,8 @@
       document.getElementById("phase-label").textContent = phase;
 
       if (data.report) {
-        if (data.clearedQuestionId) {
-          await dismissGap(data.clearedQuestionId);
-          document.getElementById("level-card").classList.remove("score-pop");
-          void document.getElementById("level-card").offsetWidth;
-          document.getElementById("level-card").classList.add("score-pop");
-        }
         fillReport(data.report);
       }
-    }
-
-    function dismissGap(questionId) {
-      const card = document.querySelector('[data-question-id="' + questionId + '"]');
-      if (!card) {
-        return Promise.resolve();
-      }
-      card.classList.add("gap-leave");
-      return new Promise((resolve) => {
-        card.addEventListener("animationend", () => resolve(), { once: true });
-        setTimeout(resolve, 700);
-      });
     }
 
     function fillReport(report) {
@@ -401,12 +362,7 @@
         const reason = document.createElement("div");
         reason.className = "text-xs text-rose-300 mt-1";
         reason.textContent = gap.score + " из 3 · " + (gap.reason || "нужно подтянуть");
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "mt-2 text-xs px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-200 hover:bg-rose-500/30";
-        button.textContent = "Отработать";
-        button.addEventListener("click", () => postMessage("", false, { action: "practice", questionId: gap.questionId }));
-        card.append(title, reason, button);
+        card.append(title, reason);
         container.appendChild(card);
       }
     }

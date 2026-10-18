@@ -17,9 +17,6 @@ public enum Phase {
 	/** Идёт серия заданий. */
 	DIAGNOSIS,
 
-	/** Человек отрабатывает один пробел. */
-	PRACTICE,
-
 	/** Отчёт уже выдан. */
 	DONE;
 
@@ -32,7 +29,6 @@ public enum Phase {
 		return switch (this) {
 			case ASK_ROLE, ASK_GOAL, ASK_SKILLS -> "intro";
 			case DIAGNOSIS -> "diagnosis";
-			case PRACTICE -> "practice";
 			case DONE -> "report";
 		};
 	}

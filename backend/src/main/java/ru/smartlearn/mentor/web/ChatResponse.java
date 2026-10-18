@@ -10,7 +10,6 @@ package ru.smartlearn.mentor.web;
  * @param questionNumber номер текущего задания, с 1
  * @param questionCount сколько заданий в диагностике
  * @param report карточка отчёта, когда она уже есть
- * @param clearedQuestionId пробел, который только что закрыли и нужно убрать с анимацией
  */
 public record ChatResponse(
 		String sessionId,
@@ -19,7 +18,6 @@ public record ChatResponse(
 		String role,
 		Integer questionNumber,
 		Integer questionCount,
-		ReportResponse report,
-		String clearedQuestionId
+		ReportResponse report
 ) {
 }
