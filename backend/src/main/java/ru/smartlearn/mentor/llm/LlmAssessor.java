@@ -8,7 +8,6 @@ import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
 import ru.smartlearn.mentor.score.AssessmentComposer;
 import ru.smartlearn.mentor.score.Assessor;
-import ru.smartlearn.mentor.score.PlanWeek;
 import ru.smartlearn.mentor.score.StoredAnswer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -34,9 +33,8 @@ public class LlmAssessor implements Assessor {
 			3 — конкретный приём, проверка качества и осознанное ограничение (данные, галлюцинации, ответственность)
 			Не завышай. Короткий слабый ответ не может получить 2 или 3.
 			Верни только JSON без пояснений вокруг:
-			{"scores":[{"id":"...","score":0,"reason":"..."}],"strengths":["..."],"gaps":["..."],"summary":"...","plan":[{"week":1,"title":"...","steps":["..."]}]}
+			{"scores":[{"id":"...","score":0,"reason":"..."}],"strengths":["..."],"gaps":["..."],"summary":"..."}
 			В scores ровно по одному объекту на каждый вопрос, id копируй из задания.
-			plan — четыре недели, шаги конкретные и привязаны к пробелам.
 			""";
 
 	private final LlmClient client;
@@ -71,7 +69,6 @@ public class LlmAssessor implements Assessor {
 				strings(root.path("strengths")),
 				strings(root.path("gaps")),
 				root.path("summary").asString(""),
-				plan(root.path("plan")),
 				"gigachat"
 		);
 	}
@@ -169,23 +166,5 @@ public class LlmAssessor implements Assessor {
 			}
 		}
 		return values;
-	}
-
-	/**
-	 * Читает недели плана. Неполный план позже заменит сборщик отчёта.
-	 *
-	 * @param node узел {@code plan}
-	 * @return недели, которые удалось прочитать
-	 */
-	private List<PlanWeek> plan(JsonNode node) {
-		List<PlanWeek> weeks = new ArrayList<>();
-		if (!node.isArray()) {
-			return weeks;
-		}
-		for (JsonNode week : node) {
-			List<String> steps = strings(week.path("steps"));
-			weeks.add(new PlanWeek(week.path("week").asInt(weeks.size() + 1), week.path("title").asString(""), steps));
-		}
-		return weeks;
 	}
 }

@@ -39,6 +39,7 @@ class ChatFlowTest {
 		assertTrue(report.report().courses().stream().anyMatch(course -> !course.free()));
 		assertTrue(report.report().plan().stream().anyMatch(week ->
 				week.steps().stream().anyMatch(step -> step.startsWith("Пройти курс:"))));
+		assertEquals(report.report().answers().getFirst().title(), report.report().plan().getFirst().title());
 	}
 
 	/**
@@ -51,6 +52,7 @@ class ChatFlowTest {
 		assertEquals(15, report.report().score());
 		assertEquals(4, report.report().plan().size());
 		assertTrue(report.report().courses().isEmpty());
+		assertTrue(report.report().plan().getFirst().title().startsWith("Закрепить:"));
 	}
 
 	/**
@@ -100,6 +102,9 @@ class ChatFlowTest {
 		assertEquals("practice", failed.phase());
 		assertNull(failed.clearedQuestionId());
 		assertEquals(report.report().score(), failed.report().score());
+		assertTrue(failed.reply().contains("Почему не максимум"));
+		assertTrue(failed.reply().contains("Какие приёмы нужны"));
+		assertTrue(failed.reply().contains("Похожее задание"));
 	}
 
 	/**

@@ -14,7 +14,6 @@ import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
 import ru.smartlearn.mentor.score.AssessmentComposer;
 import ru.smartlearn.mentor.score.Course;
-import ru.smartlearn.mentor.score.PlanTemplates;
 import ru.smartlearn.mentor.score.PlanWeek;
 import ru.smartlearn.mentor.score.PracticeGrade;
 
@@ -203,11 +202,12 @@ public class ChatService {
 		}
 		session.setPhase(Phase.PRACTICE);
 		session.setPracticeQuestionId(questionId);
-		return "### Тренажёр: " + gap.title() + "\n\n" + task + "\n\nОтвет зачтётся, если в нём будут конкретные действия и проверка результата.";
+		session.setPracticeTask(task);
+		return "### Тренажёр: " + gap.title() + "\n\n" + task + "\n\nТема закроется, когда закрыты все пункты выше. Другие темы, включая названия инструментов, не нужны.";
 	}
 
 	/**
-	 * Принимает попытку и при зачёте поднимает балл темы.
+	 * Принимает попытку. Тройка закрывает тему, меньший балл оставляет похожее задание.
 	 *
 	 * @param session сессия в тренажёре
 	 * @param text ответ человека
@@ -219,17 +219,28 @@ public class ChatService {
 			session.setPhase(Phase.DONE);
 			return "Тренажёр сбился. Вернись к отчёту и выбери пробел ещё раз.";
 		}
-		String task = practiceCoach.taskFor(gap.questionId());
-		PracticeGrade grade = practiceCoach.grade(session.role(), gap.title(), task, text);
-		if (!grade.passed()) {
-			return "### Пока не зачёт\n\n" + grade.feedback() + "\n\nДопиши ответ: нужны действия и способ проверить качество. Пробел пока остаётся.";
+		String task = session.practiceTask().isBlank() ? practiceCoach.taskFor(gap.questionId()) : session.practiceTask();
+		PracticeGrade grade = practiceCoach.grade(session.role(), gap.questionId(), gap.title(), task, text);
+		if (!grade.mastered()) {
+			session.setPracticeTask(grade.nextTask());
+			return """
+					### Пока не 3 из 3
+
+					**Почему не максимум:** %s
+
+					**Какие приёмы нужны:** %s
+
+					### Похожее задание
+
+					%s
+					""".formatted(grade.whyNotMax(), grade.techniques(), grade.nextTask()).strip();
 		}
-		int raised = Math.max(gap.score(), Math.max(2, grade.score()));
-		raiseScore(session, gap.questionId(), raised, grade.feedback());
+		raiseScore(session, gap.questionId(), 3, "В ответе есть приём, проверка результата и ограничение.");
 		session.setPhase(Phase.DONE);
 		session.setPracticeQuestionId(null);
+		session.setPracticeTask("");
 		session.markCleared(gap.questionId());
-		return "### Зачёт\n\n" + grade.feedback() + "\n\nБалл по теме «" + gap.title() + "» вырос до **" + raised + "**. Пробел закрыт.";
+		return "### Максимум\n\nВ ответе названы все пункты задания. Балл по теме «" + gap.title() + "» вырос до **3**. Пробел закрыт.";
 	}
 
 	/**
@@ -275,7 +286,6 @@ public class ChatService {
 				List.of(),
 				List.of(),
 				"",
-				PlanTemplates.forRole(session.role()),
 				current.scoredBy()
 		));
 	}

@@ -33,5 +33,5 @@
 
 ## Стек
 - Spring Boot 3
-- RestClient / WebClient для YandexGPT
+- RestClient / WebClient для GIgachat
 - React + Vite

@@ -31,6 +31,7 @@ public final class MentorSession {
 	private final List<AnswerScore> observations = new ArrayList<>();
 	private Assessment assessment;
 	private String practiceQuestionId;
+	private String practiceTask = "";
 	private String clearedQuestionId;
 
 	/**
@@ -367,6 +368,25 @@ public final class MentorSession {
 	 */
 	public String practiceQuestionId() {
 		return practiceQuestionId;
+	}
+
+	/**
+	 * Запоминает задание, на которое сейчас отвечает человек.
+	 * Следующая попытка проверяется уже по нему, а не по стартовой формулировке.
+	 *
+	 * @param practiceTask текст задания или пустая строка
+	 */
+	public void setPracticeTask(String practiceTask) {
+		this.practiceTask = practiceTask == null ? "" : practiceTask;
+	}
+
+	/**
+	 * Возвращает задание текущей попытки.
+	 *
+	 * @return текст задания
+	 */
+	public String practiceTask() {
+		return practiceTask;
 	}
 
 	/**

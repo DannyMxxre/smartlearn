@@ -14,7 +14,6 @@ import ru.smartlearn.mentor.score.Competency;
 import ru.smartlearn.mentor.score.CompetencyMap;
 import ru.smartlearn.mentor.score.CompetencyRollup;
 import ru.smartlearn.mentor.score.HeuristicAssessor;
-import ru.smartlearn.mentor.score.PlanTemplates;
 import ru.smartlearn.mentor.score.StoredAnswer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -237,7 +236,6 @@ public class DialogueCoach {
 				List.of(),
 				List.of(),
 				session.summaryComment(),
-				PlanTemplates.forRole(session.role()),
 				session.scoredBy()
 		));
 		return null;

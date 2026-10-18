@@ -22,7 +22,6 @@ public final class AssessmentComposer {
 	 * @param strengths сильные стороны, можно пустые
 	 * @param gaps пробелы, можно пустые
 	 * @param summary короткий вывод, можно пустой
-	 * @param plan план, заменяется шаблоном, если он не на 4 недели
 	 * @param scoredBy источник текста отчёта
 	 * @return готовый отчёт
 	 */
@@ -32,13 +31,12 @@ public final class AssessmentComposer {
 			List<String> strengths,
 			List<String> gaps,
 			String summary,
-			List<PlanWeek> plan,
 			String scoredBy
 	) {
 		int total = scores.stream().mapToInt(AnswerScore::score).sum();
 		int maxScore = scores.size() * 3;
 		Level level = LevelScale.fromShare(total, maxScore);
-		List<PlanWeek> basePlan = valid(plan) ? copyPlan(plan) : PlanTemplates.forRole(role);
+		List<PlanWeek> basePlan = PlanTemplates.fromScores(role, scores);
 		List<Course> courses = CourseCatalog.recommend(scores);
 		return new Assessment(
 				level,
@@ -55,17 +53,27 @@ public final class AssessmentComposer {
 	}
 
 	/**
-	 * Дописывает в неделю плана шаг с подобранным курсом.
+	 * Дописывает курс в неделю той темы, из-за которой он подобран.
+	 * Курс пятой слабой темы попадает в последнюю неделю.
 	 *
-	 * @param plan уже проверенный план
+	 * @param plan недели, собранные по баллам
 	 * @param courses курсы слабых тем
 	 * @return план с прикреплёнными курсами
 	 */
 	private List<PlanWeek> attachCourses(List<PlanWeek> plan, List<Course> courses) {
 		Map<Integer, List<String>> extra = new LinkedHashMap<>();
+		List<String> leftover = new ArrayList<>();
 		for (Course course : courses) {
-			extra.computeIfAbsent(course.week(), ignored -> new ArrayList<>())
-					.add("Пройти курс: " + course.title() + " (" + course.provider() + ").");
+			String step = "Пройти курс: " + course.title() + " (" + course.provider() + ").";
+			int week = weekFor(plan, course.gapTitle());
+			if (week == 0) {
+				leftover.add(step);
+			} else {
+				extra.computeIfAbsent(week, ignored -> new ArrayList<>()).add(step);
+			}
+		}
+		if (!leftover.isEmpty() && !plan.isEmpty()) {
+			extra.computeIfAbsent(plan.getLast().week(), ignored -> new ArrayList<>()).addAll(leftover);
 		}
 		List<PlanWeek> attached = new ArrayList<>();
 		for (PlanWeek week : plan) {
@@ -74,6 +82,25 @@ public final class AssessmentComposer {
 			attached.add(new PlanWeek(week.week(), week.title(), List.copyOf(steps)));
 		}
 		return List.copyOf(attached);
+	}
+
+	/**
+	 * Ищет неделю, в заголовке которой есть тема пробела.
+	 *
+	 * @param plan собранные недели
+	 * @param title тема компетенции
+	 * @return номер недели или 0, если тема в план не вошла
+	 */
+	private int weekFor(List<PlanWeek> plan, String title) {
+		if (title == null || title.isBlank()) {
+			return 0;
+		}
+		for (PlanWeek week : plan) {
+			if (week.title() != null && week.title().contains(title)) {
+				return week.week();
+			}
+		}
+		return 0;
 	}
 
 	/**
@@ -114,38 +141,6 @@ public final class AssessmentComposer {
 			derived.add("Явного провала нет. Имеет смысл закрепить приёмы на рабочем кейсе.");
 		}
 		return List.copyOf(derived);
-	}
-
-	/**
-	 * Проверяет, что план состоит из четырёх недель с шагами.
-	 *
-	 * @param plan план модели или шаблон
-	 * @return {@code true}, если план можно показывать
-	 */
-	private boolean valid(List<PlanWeek> plan) {
-		if (plan == null || plan.size() != 4) {
-			return false;
-		}
-		for (PlanWeek week : plan) {
-			if (week.title() == null || week.title().isBlank() || week.steps() == null || week.steps().isEmpty()) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Копирует план, чтобы снаружи его нельзя было изменить.
-	 *
-	 * @param plan исходный план
-	 * @return неизменяемая копия
-	 */
-	private List<PlanWeek> copyPlan(List<PlanWeek> plan) {
-		List<PlanWeek> copy = new ArrayList<>();
-		for (PlanWeek week : plan) {
-			copy.add(new PlanWeek(week.week(), week.title().trim(), List.copyOf(week.steps())));
-		}
-		return List.copyOf(copy);
 	}
 
 	/**

@@ -1,12 +1,21 @@
 package ru.smartlearn.mentor.score;
 
 /**
- * Оценка одной попытки в тренажёре.
+ * Разбор одной попытки в тренажёре.
  *
  * @param score балл от 0 до 3
- * @param passed {@code true}, если балл не ниже 2
- * @param feedback короткий разбор для человека
+ * @param mastered {@code true}, только если балл равен 3
+ * @param whyNotMax почему ответ не дотянул до максимума, пусто при тройке
+ * @param techniques короткие приёмы, которых не хватило, пусто при тройке
+ * @param nextTask похожее задание для проверки, пусто при тройке
  * @param scoredBy {@code gigachat} или {@code heuristic}
  */
-public record PracticeGrade(int score, boolean passed, String feedback, String scoredBy) {
+public record PracticeGrade(
+		int score,
+		boolean mastered,
+		String whyNotMax,
+		String techniques,
+		String nextTask,
+		String scoredBy
+) {
 }

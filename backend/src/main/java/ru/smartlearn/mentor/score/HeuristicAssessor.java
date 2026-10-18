@@ -43,7 +43,6 @@ public class HeuristicAssessor implements Assessor {
 				List.of(),
 				List.of(),
 				"",
-				PlanTemplates.forRole(session.role()),
 				"heuristic"
 		);
 	}
