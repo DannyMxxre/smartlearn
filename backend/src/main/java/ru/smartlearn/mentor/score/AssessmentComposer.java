@@ -37,7 +37,7 @@ public final class AssessmentComposer {
 	) {
 		int total = scores.stream().mapToInt(AnswerScore::score).sum();
 		int maxScore = scores.size() * 3;
-		Level level = LevelScale.fromTotal(total);
+		Level level = LevelScale.fromShare(total, maxScore);
 		List<PlanWeek> basePlan = valid(plan) ? copyPlan(plan) : PlanTemplates.forRole(role);
 		List<Course> courses = CourseCatalog.recommend(scores);
 		return new Assessment(
@@ -84,10 +84,6 @@ public final class AssessmentComposer {
 	 * @return непустой список
 	 */
 	private List<String> fillStrengths(List<AnswerScore> scores, List<String> strengths) {
-		List<String> cleaned = clean(strengths);
-		if (!cleaned.isEmpty()) {
-			return cleaned;
-		}
 		List<String> derived = new ArrayList<>();
 		for (AnswerScore score : scores) {
 			if (score.score() >= 2) {
@@ -108,10 +104,6 @@ public final class AssessmentComposer {
 	 * @return непустой список
 	 */
 	private List<String> fillGaps(List<AnswerScore> scores, List<String> gaps) {
-		List<String> cleaned = clean(gaps);
-		if (!cleaned.isEmpty()) {
-			return cleaned;
-		}
 		List<String> derived = new ArrayList<>();
 		for (AnswerScore score : scores) {
 			if (score.score() <= 1) {
@@ -122,25 +114,6 @@ public final class AssessmentComposer {
 			derived.add("Явного провала нет. Имеет смысл закрепить приёмы на рабочем кейсе.");
 		}
 		return List.copyOf(derived);
-	}
-
-	/**
-	 * Убирает пустые строки из списка.
-	 *
-	 * @param values исходные строки
-	 * @return очищенный список
-	 */
-	private List<String> clean(List<String> values) {
-		if (values == null) {
-			return List.of();
-		}
-		List<String> cleaned = new ArrayList<>();
-		for (String value : values) {
-			if (value != null && !value.isBlank()) {
-				cleaned.add(value.trim());
-			}
-		}
-		return cleaned;
 	}
 
 	/**

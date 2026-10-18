@@ -14,8 +14,11 @@ public enum Phase {
 	/** Ждём описание текущего опыта с ИИ. */
 	ASK_SKILLS,
 
-	/** Идёт серия заданий. */
-	DIAGNOSIS,
+	/** Открытый диалог по карте компетенций. */
+	DIALOGUE,
+
+	/** Два практических кейса после диалога. */
+	BONUS,
 
 	/** Человек отрабатывает один пробел. */
 	PRACTICE,
@@ -26,12 +29,13 @@ public enum Phase {
 	/**
 	 * Сводит внутренний шаг к фазе, которую показывает интерфейс.
 	 *
-	 * @return {@code intro}, {@code diagnosis} или {@code report}
+	 * @return имя фазы для интерфейса
 	 */
 	public String wireName() {
 		return switch (this) {
 			case ASK_ROLE, ASK_GOAL, ASK_SKILLS -> "intro";
-			case DIAGNOSIS -> "diagnosis";
+			case DIALOGUE -> "dialogue";
+			case BONUS -> "bonus";
 			case PRACTICE -> "practice";
 			case DONE -> "report";
 		};

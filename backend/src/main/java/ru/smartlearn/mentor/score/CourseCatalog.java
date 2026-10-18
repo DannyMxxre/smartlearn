@@ -63,14 +63,16 @@ public final class CourseCatalog {
 		Course privacyPaid = course("d-secrets", "Google Cybersecurity", "Coursera", false, "https://www.coursera.org/professional-certificates/google-cybersecurity", 4);
 
 		Map<String, List<Course>> catalog = new LinkedHashMap<>();
-		catalog.put("a-task", List.of(promptFree, promptPaid));
-		catalog.put("a-check", List.of(promptFree, aiEveryone));
-		catalog.put("a-practice", List.of(shifted(promptFree, "a-practice", 3), shifted(promptPaid, "a-practice", 3)));
+		catalog.put("a-prompts", List.of(promptFree, promptPaid));
+		catalog.put("a-validation", List.of(shifted(promptFree, "a-validation", 2), shifted(aiEveryone, "a-validation", 2)));
+		catalog.put("a-workflow", List.of(shifted(promptFree, "a-workflow", 3), shifted(promptPaid, "a-workflow", 3)));
 		catalog.put("a-limits", List.of(privacyFree, shifted(privacyPaid, "a-limits", 4)));
-		catalog.put("d-api", List.of(shifted(devPrompt, "d-api", 1), shifted(promptPaid, "d-api", 1)));
-		catalog.put("d-bug", List.of(devPrompt, shifted(promptPaid, "d-bug", 2)));
-		catalog.put("d-practice", List.of(shifted(devPrompt, "d-practice", 3), shifted(promptPaid, "d-practice", 3)));
-		catalog.put("d-secrets", List.of(shifted(privacyFree, "d-secrets", 4), privacyPaid));
+		catalog.put("a-iterate", List.of(shifted(promptFree, "a-iterate", 2), shifted(aiEveryone, "a-iterate", 2)));
+		catalog.put("d-prompts", List.of(shifted(devPrompt, "d-prompts", 1), shifted(promptPaid, "d-prompts", 1)));
+		catalog.put("d-verify", List.of(shifted(devPrompt, "d-verify", 2), shifted(promptPaid, "d-verify", 2)));
+		catalog.put("d-workflow", List.of(shifted(devPrompt, "d-workflow", 3), shifted(promptPaid, "d-workflow", 3)));
+		catalog.put("d-limits", List.of(shifted(privacyFree, "d-limits", 4), shifted(privacyPaid, "d-limits", 4)));
+		catalog.put("d-iterate", List.of(shifted(devPrompt, "d-iterate", 2), shifted(promptPaid, "d-iterate", 2)));
 		return Map.copyOf(catalog);
 	}
 

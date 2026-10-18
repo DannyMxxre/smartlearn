@@ -94,6 +94,16 @@ public class HeuristicAssessor implements Assessor {
 	 * @param score балл ответа
 	 * @return обоснование
 	 */
+	public String explain(int score) {
+		return reason(score);
+	}
+
+	/**
+	 * Объясняет балл короткой фразой для отчёта.
+	 *
+	 * @param score балл ответа
+	 * @return обоснование
+	 */
 	private String reason(int score) {
 		return switch (score) {
 			case 3 -> "Есть конкретный приём, проверка результата и ограничение.";

@@ -1,18 +1,12 @@
 package ru.smartlearn.mentor.web;
 
 import org.junit.jupiter.api.Test;
-import ru.smartlearn.mentor.dialog.Level;
-import ru.smartlearn.mentor.dialog.MentorSession;
-import ru.smartlearn.mentor.dialog.Role;
+import ru.smartlearn.mentor.config.YandexProperties;
 import ru.smartlearn.mentor.dialog.SessionStore;
-import ru.smartlearn.mentor.llm.AssessmentService;
-import ru.smartlearn.mentor.llm.LlmAssessor;
-import ru.smartlearn.mentor.question.QuestionBank;
-import ru.smartlearn.mentor.score.Assessment;
+import ru.smartlearn.mentor.llm.DialogueCoach;
+import ru.smartlearn.mentor.llm.PracticeCoach;
+import ru.smartlearn.mentor.score.CompetencyMap;
 import ru.smartlearn.mentor.score.HeuristicAssessor;
-import ru.smartlearn.mentor.score.StoredAnswer;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -30,7 +24,6 @@ class ChatFlowTest {
 			чтобы поймать галлюцинацию и противоречие. Секреты и персональные данные в промпт не отправляю, \
 			беру обезличенный пример. Перед коммитом смотрю diff, гоняю тест и делаю ревью валидации.""";
 
-	private final QuestionBank questionBank = new QuestionBank();
 	private final HeuristicAssessor heuristicAssessor = new HeuristicAssessor();
 
 	/**
@@ -38,7 +31,7 @@ class ChatFlowTest {
 	 */
 	@Test
 	void weakAnswersStayNovice() {
-		ChatResponse report = finish(new ChatService(new SessionStore(), assessor(), questionBank), "не знаю");
+		ChatResponse report = finish(new ChatService(new SessionStore()), "не знаю");
 		assertEquals("Новичок", report.report().level());
 		assertEquals(0, report.report().score());
 		assertEquals("heuristic", report.report().scoredBy());
@@ -53,9 +46,9 @@ class ChatFlowTest {
 	 */
 	@Test
 	void strongAnswersReachAdvanced() {
-		ChatResponse report = finish(new ChatService(new SessionStore(), assessor(), questionBank), STRONG);
+		ChatResponse report = finish(new ChatService(new SessionStore()), STRONG);
 		assertEquals("Продвинутый", report.report().level());
-		assertEquals(12, report.report().score());
+		assertEquals(15, report.report().score());
 		assertEquals(4, report.report().plan().size());
 		assertTrue(report.report().courses().isEmpty());
 	}
@@ -65,8 +58,8 @@ class ChatFlowTest {
 	 */
 	@Test
 	void sameAnswersProduceSameLevel() {
-		ChatService first = new ChatService(new SessionStore(), assessor(), questionBank);
-		ChatService second = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatService first = new ChatService(new SessionStore());
+		ChatService second = new ChatService(new SessionStore());
 		ChatResponse one = finish(first, STRONG);
 		ChatResponse two = finish(second, STRONG);
 		assertEquals(one.report().level(), two.report().level());
@@ -78,7 +71,7 @@ class ChatFlowTest {
 	 */
 	@Test
 	void passedPracticeRaisesScoreAndClearsGap() {
-		ChatService service = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatService service = new ChatService(new SessionStore());
 		ChatResponse report = finish(service, "не знаю");
 		String gapId = report.report().answers().getFirst().questionId();
 		ChatResponse task = service.chat(report.sessionId(), "", "practice", gapId);
@@ -99,7 +92,7 @@ class ChatFlowTest {
 	 */
 	@Test
 	void weakPracticeKeepsTheGap() {
-		ChatService service = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatService service = new ChatService(new SessionStore());
 		ChatResponse report = finish(service, "не знаю");
 		String gapId = report.report().answers().getFirst().questionId();
 		service.chat(report.sessionId(), "", "practice", gapId);
@@ -114,7 +107,7 @@ class ChatFlowTest {
 	 */
 	@Test
 	void unclearRoleAsksAgain() {
-		ChatService service = new ChatService(new SessionStore(), assessor(), questionBank);
+		ChatService service = new ChatService(new SessionStore());
 		ChatResponse start = service.chat(null, "");
 		ChatResponse again = service.chat(start.sessionId(), "привет");
 		assertEquals("intro", again.phase());
@@ -123,42 +116,49 @@ class ChatFlowTest {
 	}
 
 	/**
-	 * Модель не назначает уровень: низкие баллы в JSON остаются базовым уровнем.
+	 * Модель не назначает уровень: единицы в JSON не становятся продвинутым уровнем.
 	 */
 	@Test
 	void modelScoresDoNotInflateLevel() {
-		LlmAssessor assessor = new LlmAssessor((system, user) -> """
-				{"scores":[
-				{"id":"d-bug","score":1,"reason":"мало"},
-				{"id":"d-api","score":1,"reason":"мало"},
-				{"id":"d-practice","score":1,"reason":"мало"},
-				{"id":"d-secrets","score":1,"reason":"мало"}
-				],"strengths":["Смелость"],"gaps":["Проверка"],"summary":"Выглядит очень сильно","plan":[
-				{"week":1,"title":"А","steps":["шаг"]},
-				{"week":2,"title":"Б","steps":["шаг"]},
-				{"week":3,"title":"В","steps":["шаг"]},
-				{"week":4,"title":"Г","steps":["шаг"]}
-				]}
-				""", questionBank);
-		MentorSession session = new MentorSession("test");
-		session.setRole(Role.DEVELOPER);
-		session.setGoal("цель");
-		session.setSkills("навыки");
-		for (var question : questionBank.forRole(Role.DEVELOPER)) {
-			session.addAnswer(new StoredAnswer(question.id(), question.title(), question.text(), "не знаю"));
-		}
-		Assessment assessment = assessor.assess(session);
-		assertEquals(Level.BASIC, assessment.level());
-		assertEquals(4, assessment.score());
-		assertEquals("yandex", assessment.scoredBy());
-		assertEquals(List.of("Смелость"), assessment.strengths());
+		DialogueCoach coach = new DialogueCoach(
+				new YandexProperties("https://ai.api.cloud.yandex.net/v1", "test-key", "folder", "", "Api-Key", 0, 200),
+				heuristicAssessor,
+				(system, user) -> {
+					int start = user.indexOf("Фокус: ") + "Фокус: ".length();
+					String id = user.substring(start, user.indexOf('\n', start)).trim();
+					return "{\"scores\":[{\"id\":\"" + id + "\",\"score\":1,\"reason\":\"мало\"}],"
+							+ "\"comment\":\"Выглядит очень сильно\",\"nextQuestion\":\"Уточни, как проверишь результат.\"}";
+				},
+				new CompetencyMap()
+		);
+		ChatService service = new ChatService(new SessionStore(), coach, PracticeCoach.heuristicOnly());
+		ChatResponse report = finish(service, "не знаю");
+		assertEquals("Базовый", report.report().level());
+		assertEquals(5, report.report().score());
+		assertEquals("yandex", report.report().scoredBy());
+		assertTrue(report.report().summary().contains("Выглядит очень сильно"));
+		assertEquals(5, report.report().gaps().size());
 	}
 
 	/**
-	 * Проходит знакомство разработчика и четыре одинаковых ответа.
+	 * Первые вопросы аналитика и разработчика расходятся по теме.
+	 */
+	@Test
+	void rolesOpenDifferentCompetencies() {
+		ChatService analysts = new ChatService(new SessionStore());
+		ChatService developers = new ChatService(new SessionStore());
+		String analyst = opening(analysts, "я аналитик");
+		String developer = opening(developers, "я разработчик");
+		assertTrue(analyst.contains("user story"));
+		assertTrue(developer.contains("diff"));
+		assertTrue(!analyst.equals(developer));
+	}
+
+	/**
+	 * Проходит знакомство и отвечает одной и той же фразой до отчёта.
 	 *
-	 * @param service сервис с локальной оценкой
-	 * @param answer текст каждого задания
+	 * @param service сервис диалога
+	 * @param answer текст каждого ответа
 	 * @return финальный ответ с отчётом
 	 */
 	private ChatResponse finish(ChatService service, String answer) {
@@ -167,26 +167,34 @@ class ChatFlowTest {
 		service.chat(id, "я разработчик");
 		service.chat(id, "Хочу принимать патчи от ИИ без регрессий");
 		ChatResponse firstQuestion = service.chat(id, "Иногда прошу чат набросать черновик");
-		assertEquals("diagnosis", firstQuestion.phase());
+		assertEquals("dialogue", firstQuestion.phase());
 		assertEquals(1, firstQuestion.questionNumber());
-		service.chat(id, answer);
-		service.chat(id, answer);
-		service.chat(id, answer);
-		ChatResponse report = service.chat(id, answer);
-		assertEquals("report", report.phase());
-		return report;
+		boolean sawBonus = "bonus".equals(firstQuestion.phase());
+		ChatResponse step = firstQuestion;
+		for (int guard = 0; !"report".equals(step.phase()) && guard < 20; guard++) {
+			step = service.chat(id, answer);
+			if ("bonus".equals(step.phase()) || step.reply().contains("Дополнительное практическое")) {
+				sawBonus = true;
+			}
+		}
+		assertEquals("report", step.phase());
+		assertTrue(sawBonus);
+		return step;
 	}
 
 	/**
-	 * Подменяет облако локальным разборщиком, ключ в тесте не нужен.
+	 * Доводит сессию до первого вопроса диагностики.
 	 *
-	 * @return сервис оценки без YandexGPT
+	 * @param service сервис диалога
+	 * @param role фраза с ролью
+	 * @return текст первого вопроса
 	 */
-	private AssessmentService assessor() {
-		return new AssessmentService(
-				new ru.smartlearn.mentor.config.YandexProperties("", "", "", "", "Api-Key", 0, 1800),
-				new LlmAssessor((system, user) -> "{}", questionBank),
-				heuristicAssessor
-		);
+	private String opening(ChatService service, String role) {
+		ChatResponse start = service.chat(null, "");
+		service.chat(start.sessionId(), role);
+		service.chat(start.sessionId(), "Хочу работать с ИИ аккуратнее");
+		ChatResponse first = service.chat(start.sessionId(), "Пока почти не использую");
+		assertEquals("dialogue", first.phase());
+		return first.reply();
 	}
 }

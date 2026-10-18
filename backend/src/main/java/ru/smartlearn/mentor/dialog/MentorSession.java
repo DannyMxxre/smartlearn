@@ -1,5 +1,6 @@
 package ru.smartlearn.mentor.dialog;
 
+import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
 import ru.smartlearn.mentor.score.StoredAnswer;
 
@@ -20,6 +21,14 @@ public final class MentorSession {
 	private String goal = "";
 	private String skills = "";
 	private int questionIndex;
+	private int competencyIndex;
+	private int substantiveReplies;
+	private int bonusIndex = -1;
+	private boolean followUp;
+	private String focusId;
+	private String summaryComment = "";
+	private String scoredBy;
+	private final List<AnswerScore> observations = new ArrayList<>();
 	private Assessment assessment;
 	private String practiceQuestionId;
 	private String clearedQuestionId;
@@ -167,6 +176,151 @@ public final class MentorSession {
 	 */
 	public void setQuestionIndex(int questionIndex) {
 		this.questionIndex = questionIndex;
+	}
+
+	/**
+	 * Запоминает, какая компетенция сейчас в фокусе.
+	 *
+	 * @param focusId код компетенции
+	 */
+	public void setFocusId(String focusId) {
+		this.focusId = focusId;
+	}
+
+	/**
+	 * Возвращает компетенцию текущего вопроса.
+	 *
+	 * @return код или {@code null}
+	 */
+	public String focusId() {
+		return focusId;
+	}
+
+	/**
+	 * Сдвигает указатель карты компетенций.
+	 *
+	 * @param competencyIndex индекс следующей темы
+	 */
+	public void setCompetencyIndex(int competencyIndex) {
+		this.competencyIndex = competencyIndex;
+	}
+
+	/**
+	 * Возвращает индекс текущей темы в карте.
+	 *
+	 * @return индекс с нуля
+	 */
+	public int competencyIndex() {
+		return competencyIndex;
+	}
+
+	/**
+	 * Отмечает, что следующий ответ всё ещё уточняет ту же тему.
+	 *
+	 * @param followUp {@code true}, если ждём уточнение
+	 */
+	public void setFollowUp(boolean followUp) {
+		this.followUp = followUp;
+	}
+
+	/**
+	 * Проверяет, ждём ли уточнение той же темы.
+	 *
+	 * @return {@code true}, если тема не сменилась
+	 */
+	public boolean followUp() {
+		return followUp;
+	}
+
+	/**
+	 * Увеличивает счётчик содержательных реплик диалога.
+	 */
+	public void incrementReplies() {
+		this.substantiveReplies++;
+	}
+
+	/**
+	 * Возвращает, сколько содержательных ответов уже было в диалоге.
+	 *
+	 * @return число реплик, без бонусных кейсов
+	 */
+	public int substantiveReplies() {
+		return substantiveReplies;
+	}
+
+	/**
+	 * Запоминает номер бонусного кейса.
+	 *
+	 * @param bonusIndex индекс с нуля или {@code -1} до практики
+	 */
+	public void setBonusIndex(int bonusIndex) {
+		this.bonusIndex = bonusIndex;
+	}
+
+	/**
+	 * Возвращает номер текущего бонусного кейса.
+	 *
+	 * @return индекс с нуля
+	 */
+	public int bonusIndex() {
+		return bonusIndex;
+	}
+
+	/**
+	 * Добавляет одну оценку реплики до свёртки в компетенцию.
+	 *
+	 * @param observation балл по коду компетенции
+	 */
+	public void addObservation(AnswerScore observation) {
+		observations.add(observation);
+	}
+
+	/**
+	 * Возвращает все оценки реплик.
+	 *
+	 * @return неизменяемая копия
+	 */
+	public List<AnswerScore> observations() {
+		return List.copyOf(observations);
+	}
+
+	/**
+	 * Запоминает комментарий модели для итогового абзаца.
+	 *
+	 * @param summaryComment текст комментария
+	 */
+	public void setSummaryComment(String summaryComment) {
+		this.summaryComment = summaryComment;
+	}
+
+	/**
+	 * Возвращает последний содержательный комментарий.
+	 *
+	 * @return текст или пустая строка
+	 */
+	public String summaryComment() {
+		return summaryComment;
+	}
+
+	/**
+	 * Запоминает, кто ставил баллы.
+	 * Любой локальный пересчёт помечает весь отчёт как локальный.
+	 *
+	 * @param source {@code yandex} или {@code heuristic}
+	 */
+	public void markScoredBy(String source) {
+		if (scoredBy == null || "heuristic".equals(source)) {
+			scoredBy = source;
+		}
+	}
+
+	/**
+	 * Возвращает источник баллов.
+	 *
+	 * @return {@code yandex} или {@code heuristic}
+	 */
+	public String scoredBy() {
+		return scoredBy == null ? "heuristic" : scoredBy;
 	}
 
 	/**

@@ -176,6 +176,8 @@
     const phaseNames = {
       intro: "Знакомство",
       diagnosis: "Диагностика",
+      dialogue: "Открытый диалог",
+      bonus: "Практика",
       practice: "Тренажёр",
       report: "Отчёт и план"
     };
@@ -328,6 +330,12 @@
       let phase = phaseNames[data.phase] || "Диалог";
       if (data.phase === "diagnosis" && data.questionNumber) {
         phase = "Диагностика · задание " + data.questionNumber + " из " + data.questionCount;
+      }
+      if (data.phase === "dialogue" && data.questionNumber) {
+        phase = "Диалог · вопрос " + data.questionNumber;
+      }
+      if (data.phase === "bonus" && data.questionNumber) {
+        phase = "Практика · задание " + data.questionNumber + " из " + data.questionCount;
       }
       document.getElementById("phase-label").textContent = phase;
 

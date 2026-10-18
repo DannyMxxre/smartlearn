@@ -7,10 +7,8 @@ import ru.smartlearn.mentor.dialog.MentorSession;
 import ru.smartlearn.mentor.dialog.Phase;
 import ru.smartlearn.mentor.dialog.Role;
 import ru.smartlearn.mentor.dialog.SessionStore;
-import ru.smartlearn.mentor.llm.AssessmentService;
+import ru.smartlearn.mentor.llm.DialogueCoach;
 import ru.smartlearn.mentor.llm.PracticeCoach;
-import ru.smartlearn.mentor.question.Question;
-import ru.smartlearn.mentor.question.QuestionBank;
 import ru.smartlearn.mentor.question.RoleParser;
 import ru.smartlearn.mentor.score.AnswerScore;
 import ru.smartlearn.mentor.score.Assessment;
@@ -19,21 +17,19 @@ import ru.smartlearn.mentor.score.Course;
 import ru.smartlearn.mentor.score.PlanTemplates;
 import ru.smartlearn.mentor.score.PlanWeek;
 import ru.smartlearn.mentor.score.PracticeGrade;
-import ru.smartlearn.mentor.score.StoredAnswer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Ведёт обязательный сценарий: знакомство, диагностика, отчёт и план.
- * Переходы между шагами решает код, модель подключается только в конце.
+ * Ведёт обязательный сценарий: знакомство, открытый диалог, практика, отчёт.
+ * Переходы между шагами решает код. Модель ставит баллы по компетенциям.
  */
 @Service
 public class ChatService {
 
 	private final SessionStore sessionStore;
-	private final AssessmentService assessmentService;
-	private final QuestionBank questionBank;
+	private final DialogueCoach dialogueCoach;
 	private final PracticeCoach practiceCoach;
 	private final AssessmentComposer composer = new AssessmentComposer();
 
@@ -41,32 +37,23 @@ public class ChatService {
 	 * Собирает сервис диалога.
 	 *
 	 * @param sessionStore хранилище сессий
-	 * @param assessmentService подсчёт отчёта
-	 * @param questionBank задания по ролям
+	 * @param dialogueCoach открытый диалог и бонусные кейсы
 	 * @param practiceCoach тренажёр по пробелам
 	 */
 	@Autowired
-	public ChatService(
-			SessionStore sessionStore,
-			AssessmentService assessmentService,
-			QuestionBank questionBank,
-			PracticeCoach practiceCoach
-	) {
+	public ChatService(SessionStore sessionStore, DialogueCoach dialogueCoach, PracticeCoach practiceCoach) {
 		this.sessionStore = sessionStore;
-		this.assessmentService = assessmentService;
-		this.questionBank = questionBank;
+		this.dialogueCoach = dialogueCoach;
 		this.practiceCoach = practiceCoach;
 	}
 
 	/**
-	 * Собирает сервис для тестов с локальным тренажёром.
+	 * Собирает сервис для тестов без облака.
 	 *
 	 * @param sessionStore хранилище сессий
-	 * @param assessmentService подсчёт отчёта
-	 * @param questionBank задания по ролям
 	 */
-	public ChatService(SessionStore sessionStore, AssessmentService assessmentService, QuestionBank questionBank) {
-		this(sessionStore, assessmentService, questionBank, PracticeCoach.heuristicOnly());
+	public ChatService(SessionStore sessionStore) {
+		this(sessionStore, DialogueCoach.heuristicOnly(), PracticeCoach.heuristicOnly());
 	}
 
 	/**
@@ -112,7 +99,7 @@ public class ChatService {
 				case ASK_ROLE -> onRole(session, text);
 				case ASK_GOAL -> onGoal(session, text);
 				case ASK_SKILLS -> onSkills(session, text);
-				case DIAGNOSIS -> onDiagnosis(session, text);
+				case DIALOGUE, BONUS -> continueDialogue(session, text);
 				case PRACTICE -> onPractice(session, text);
 				case DONE -> "Диагностика уже завершена. Закрой пробел кнопкой «Отработать» в боковой панели или начни новую сессию.";
 			};
@@ -173,31 +160,23 @@ public class ChatService {
 	 */
 	private String onSkills(MentorSession session, String text) {
 		session.setSkills(text);
-		session.setPhase(Phase.DIAGNOSIS);
-		session.setQuestionIndex(0);
-		List<Question> questions = questionBank.forRole(session.role());
-		return questionText(questions.get(0), 0, questions.size());
+		return dialogueCoach.open(session);
 	}
 
 	/**
-	 * Запоминает ответ и либо задаёт следующий вопрос, либо строит отчёт.
+	 * Принимает ответ диалога или бонусного кейса.
+	 * Пустой ответ наставника означает, что отчёт уже собран.
 	 *
-	 * @param session текущая сессия
-	 * @param text ответ на текущее задание
-	 * @return следующее задание или отчёт
+	 * @param session сессия диагностики
+	 * @param text ответ человека
+	 * @return следующий вопрос или текст отчёта
 	 */
-	private String onDiagnosis(MentorSession session, String text) {
-		List<Question> questions = questionBank.forRole(session.role());
-		Question current = questions.get(session.questionIndex());
-		session.addAnswer(new StoredAnswer(current.id(), current.title(), current.text(), text));
-		int next = session.questionIndex() + 1;
-		session.setQuestionIndex(next);
-		if (next < questions.size()) {
-			return questionText(questions.get(next), next, questions.size());
+	private String continueDialogue(MentorSession session, String text) {
+		String next = dialogueCoach.answer(session, text);
+		if (next == null) {
+			return render(session.assessment());
 		}
-		Assessment assessment = assessmentService.assess(session);
-		session.complete(assessment);
-		return render(assessment);
+		return next;
 	}
 
 	/**
@@ -302,18 +281,6 @@ public class ChatService {
 	}
 
 	/**
-	 * Формирует текст задания с номером.
-	 *
-	 * @param question задание
-	 * @param index индекс с нуля
-	 * @param total сколько заданий всего
-	 * @return реплика наставника
-	 */
-	private String questionText(Question question, int index, int total) {
-		return "Задание " + (index + 1) + " из " + total + ".\n\n" + question.text();
-	}
-
-	/**
 	 * Собирает отчёт в Markdown, чтобы чат показал заголовки, списки и ссылки.
 	 *
 	 * @param assessment результат оценки
@@ -374,9 +341,15 @@ public class ChatService {
 	 * @return ответ клиенту
 	 */
 	private ChatResponse respond(MentorSession session, String reply) {
-		List<Question> questions = session.role() == null ? List.of() : questionBank.forRole(session.role());
-		Integer questionNumber = session.phase() == Phase.DIAGNOSIS ? session.questionIndex() + 1 : null;
-		Integer questionCount = questions.isEmpty() ? null : questions.size();
+		Integer questionNumber = null;
+		Integer questionCount = null;
+		if (session.phase() == Phase.DIALOGUE) {
+			questionNumber = session.substantiveReplies() + 1;
+		}
+		if (session.phase() == Phase.BONUS) {
+			questionNumber = session.bonusIndex() + 1;
+			questionCount = 2;
+		}
 		return new ChatResponse(
 				session.id(),
 				session.phase().wireName(),

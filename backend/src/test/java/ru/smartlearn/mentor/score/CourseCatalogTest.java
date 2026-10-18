@@ -18,10 +18,11 @@ class CourseCatalogTest {
 	@Test
 	void weakDeveloperAnswersGetRealCourses() {
 		List<Course> courses = CourseCatalog.recommend(List.of(
-				new AnswerScore("d-bug", "Разбор падения и ревью патча", 0, ""),
-				new AnswerScore("d-api", "Работа с несуществующим API", 0, ""),
-				new AnswerScore("d-practice", "Промпт на рабочую ручку", 0, ""),
-				new AnswerScore("d-secrets", "Секреты и данные", 0, "")
+				new AnswerScore("d-prompts", "Промптинг под задачи разработки", 0, ""),
+				new AnswerScore("d-verify", "Верификация сгенерированного кода", 0, ""),
+				new AnswerScore("d-workflow", "ИИ в ежедневной разработке", 0, ""),
+				new AnswerScore("d-limits", "Где ИИ использовать опасно", 0, ""),
+				new AnswerScore("d-iterate", "Уточнение контекста и итерации", 0, "")
 		));
 		assertTrue(courses.stream().anyMatch(Course::free));
 		assertTrue(courses.stream().anyMatch(course -> !course.free()));
@@ -35,10 +36,11 @@ class CourseCatalogTest {
 	@Test
 	void strongAnswersGetNoCourses() {
 		List<Course> courses = CourseCatalog.recommend(List.of(
-				new AnswerScore("a-task", "Постановка задачи модели", 3, ""),
-				new AnswerScore("a-check", "Проверка противоречий", 3, ""),
-				new AnswerScore("a-practice", "Практический разбор заметки", 2, ""),
-				new AnswerScore("a-limits", "Границы применения", 2, "")
+				new AnswerScore("a-prompts", "Формулирование задач и промптов", 3, ""),
+				new AnswerScore("a-validation", "Критическая проверка результата", 3, ""),
+				new AnswerScore("a-workflow", "Применение ИИ в рабочем процессе", 2, ""),
+				new AnswerScore("a-limits", "Ограничения и границы применимости", 2, ""),
+				new AnswerScore("a-iterate", "Итерации и доработка контекста", 2, "")
 		));
 		assertTrue(courses.isEmpty());
 	}
