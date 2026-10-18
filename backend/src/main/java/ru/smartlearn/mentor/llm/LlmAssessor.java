@@ -47,7 +47,7 @@ public class LlmAssessor implements Assessor {
 	/**
 	 * Собирает оценщика поверх любого клиента модели.
 	 *
-	 * @param client клиент YandexGPT или тестовая заглушка
+	 * @param client клиент GigaChat или тестовая заглушка
 	 * @param questionBank банк заданий, чтобы напомнить фокус оценки
 	 */
 	public LlmAssessor(LlmClient client, QuestionBank questionBank) {
@@ -59,7 +59,7 @@ public class LlmAssessor implements Assessor {
 	 * Отправляет ответы в модель и собирает отчёт из её JSON.
 	 *
 	 * @param session завершённая диагностика
-	 * @return отчёт с пометкой {@code yandex}
+	 * @return отчёт с пометкой {@code gigachat}
 	 */
 	@Override
 	public Assessment assess(MentorSession session) {
@@ -72,7 +72,7 @@ public class LlmAssessor implements Assessor {
 				strings(root.path("gaps")),
 				root.path("summary").asString(""),
 				plan(root.path("plan")),
-				"yandex"
+				"gigachat"
 		);
 	}
 

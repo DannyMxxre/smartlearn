@@ -3,7 +3,7 @@ package ru.smartlearn.mentor.llm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ru.smartlearn.mentor.config.YandexProperties;
+import ru.smartlearn.mentor.config.GigaChatProperties;
 import ru.smartlearn.mentor.dialog.Role;
 import ru.smartlearn.mentor.score.HeuristicAssessor;
 import ru.smartlearn.mentor.score.PracticeGrade;
@@ -45,7 +45,7 @@ public class PracticeCoach {
 			Map.entry("d-iterate", "Первый diff не подошёл. Как уточнишь контекст для следующей итерации и каким тестом проверишь, что стало лучше?")
 	);
 
-	private final YandexProperties properties;
+	private final GigaChatProperties properties;
 	private final HeuristicAssessor heuristicAssessor;
 	private final LlmClient llmClient;
 	private final JsonMapper jsonMapper = JsonMapper.builder().build();
@@ -53,11 +53,11 @@ public class PracticeCoach {
 	/**
 	 * Собирает тренера: облако, если оно настроено, иначе локальная рубрика.
 	 *
-	 * @param properties ключ YandexGPT
+	 * @param properties креды GigaChat
 	 * @param heuristicAssessor запасная оценка текста
 	 * @param llmClient клиент модели
 	 */
-	public PracticeCoach(YandexProperties properties, HeuristicAssessor heuristicAssessor, LlmClient llmClient) {
+	public PracticeCoach(GigaChatProperties properties, HeuristicAssessor heuristicAssessor, LlmClient llmClient) {
 		this.properties = properties;
 		this.heuristicAssessor = heuristicAssessor;
 		this.llmClient = llmClient;
@@ -70,7 +70,7 @@ public class PracticeCoach {
 	 */
 	public static PracticeCoach heuristicOnly() {
 		return new PracticeCoach(
-				new YandexProperties("", "", "", "", "Api-Key", 0, 200),
+				new GigaChatProperties("", "", "", "", "", "", 0, 200),
 				new HeuristicAssessor(),
 				null
 		);
@@ -100,7 +100,7 @@ public class PracticeCoach {
 			try {
 				return fromModel(role, title, task, answer);
 			} catch (RuntimeException exception) {
-				log.warn("YandexGPT не принял попытку тренажёра, считаю локально: {}", exception.getMessage());
+				log.warn("GigaChat не принял попытку тренажёра, считаю локально: {}", exception.getMessage());
 			}
 		}
 		int score = heuristicAssessor.scoreAnswer(answer);
@@ -133,6 +133,6 @@ public class PracticeCoach {
 		if (feedback.isBlank()) {
 			feedback = score >= 2 ? "Зачёт." : "Пока рано закрывать тему.";
 		}
-		return new PracticeGrade(score, score >= 2, feedback, "yandex");
+		return new PracticeGrade(score, score >= 2, feedback, "gigachat");
 	}
 }

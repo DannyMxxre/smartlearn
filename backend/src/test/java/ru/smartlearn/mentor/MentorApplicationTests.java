@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * Проверяет, что пустое приложение с настройками YandexGPT поднимается.
+ * Проверяет, что пустое приложение с настройками GigaChat поднимается.
  */
 @SpringBootTest
 class MentorApplicationTests {

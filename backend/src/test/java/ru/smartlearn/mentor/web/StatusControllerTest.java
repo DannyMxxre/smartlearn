@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Проверяет, что интерфейс узнаёт реальное состояние ключа YandexGPT.
+ * Проверяет, что интерфейс узнаёт реальное состояние кредов GigaChat.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -21,12 +21,12 @@ class StatusControllerTest {
 	private MockMvc mockMvc;
 
 	/**
-	 * Без ключа и каталога статус честно говорит, что облако не подключено.
+	 * Без Client ID, Scope и ключа статус честно говорит, что GigaChat не подключён.
 	 */
 	@Test
 	void reportsDisconnectedWithoutCredentials() throws Exception {
 		mockMvc.perform(get("/api/status"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.yandexConnected").value(false));
+				.andExpect(jsonPath("$.gigachatConnected").value(false));
 	}
 }

@@ -4,7 +4,7 @@ package ru.smartlearn.mentor.web;
  * Состояние внешних зависимостей, которое можно показать в интерфейсе.
  * Секреты сюда не попадают.
  *
- * @param yandexConnected заданы ли ключ и каталог YandexGPT
+ * @param gigachatConnected заданы ли Client ID, Scope и ключ авторизации GigaChat
  */
-public record StatusResponse(boolean yandexConnected) {
+public record StatusResponse(boolean gigachatConnected) {
 }

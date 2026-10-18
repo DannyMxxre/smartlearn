@@ -317,9 +317,9 @@ public class ChatService {
 			text.append(" — ").append(course.provider()).append(", неделя ").append(course.week()).append('\n');
 		}
 		if ("heuristic".equals(assessment.scoredBy())) {
-			text.append("\nОценка посчитана локально, без YandexGPT. Уровень выведен из баллов.");
+			text.append("\nОценка посчитана локально, без GigaChat. Уровень выведен из баллов.");
 		} else {
-			text.append("\nОбоснование подготовил YandexGPT. Уровень выведен из баллов в коде.");
+			text.append("\nОбоснование подготовил GigaChat. Уровень выведен из баллов в коде.");
 		}
 		return text.toString().trim();
 	}

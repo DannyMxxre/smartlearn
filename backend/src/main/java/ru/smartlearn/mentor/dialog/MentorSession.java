@@ -306,7 +306,7 @@ public final class MentorSession {
 	 * Запоминает, кто ставил баллы.
 	 * Любой локальный пересчёт помечает весь отчёт как локальный.
 	 *
-	 * @param source {@code yandex} или {@code heuristic}
+	 * @param source {@code gigachat} или {@code heuristic}
 	 */
 	public void markScoredBy(String source) {
 		if (scoredBy == null || "heuristic".equals(source)) {
@@ -317,7 +317,7 @@ public final class MentorSession {
 	/**
 	 * Возвращает источник баллов.
 	 *
-	 * @return {@code yandex} или {@code heuristic}
+	 * @return {@code gigachat} или {@code heuristic}
 	 */
 	public String scoredBy() {
 		return scoredBy == null ? "heuristic" : scoredBy;

@@ -17,7 +17,7 @@ import java.util.List;
  * @param gaps пробелы
  * @param summary короткий вывод
  * @param plan шаги на четыре недели
- * @param scoredBy {@code yandex} или {@code heuristic}
+ * @param scoredBy {@code gigachat} или {@code heuristic}
  * @param courses курсы под слабые темы
  */
 public record Assessment(

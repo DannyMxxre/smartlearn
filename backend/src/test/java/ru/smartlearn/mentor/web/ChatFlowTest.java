@@ -1,7 +1,7 @@
 package ru.smartlearn.mentor.web;
 
 import org.junit.jupiter.api.Test;
-import ru.smartlearn.mentor.config.YandexProperties;
+import ru.smartlearn.mentor.config.GigaChatProperties;
 import ru.smartlearn.mentor.dialog.SessionStore;
 import ru.smartlearn.mentor.llm.DialogueCoach;
 import ru.smartlearn.mentor.llm.PracticeCoach;
@@ -121,7 +121,7 @@ class ChatFlowTest {
 	@Test
 	void modelScoresDoNotInflateLevel() {
 		DialogueCoach coach = new DialogueCoach(
-				new YandexProperties("https://ai.api.cloud.yandex.net/v1", "test-key", "folder", "", "Api-Key", 0, 200),
+				new GigaChatProperties("client", "GIGACHAT_API_PERS", "test-key", "", "", "", 0, 200),
 				heuristicAssessor,
 				(system, user) -> {
 					int start = user.indexOf("Фокус: ") + "Фокус: ".length();
@@ -135,7 +135,7 @@ class ChatFlowTest {
 		ChatResponse report = finish(service, "не знаю");
 		assertEquals("Базовый", report.report().level());
 		assertEquals(5, report.report().score());
-		assertEquals("yandex", report.report().scoredBy());
+		assertEquals("gigachat", report.report().scoredBy());
 		assertTrue(report.report().summary().contains("Выглядит очень сильно"));
 		assertEquals(5, report.report().gaps().size());
 	}

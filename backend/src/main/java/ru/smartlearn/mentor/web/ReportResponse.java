@@ -13,7 +13,7 @@ import java.util.List;
  * @param summary короткий вывод
  * @param plan четыре недели
  * @param answers баллы по заданиям
- * @param scoredBy {@code yandex} или {@code heuristic}
+ * @param scoredBy {@code gigachat} или {@code heuristic}
  * @param courses курсы под слабые темы
  */
 public record ReportResponse(

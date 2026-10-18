@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 
 /**
  * Оценивает ответы без облака, по конкретике текста.
- * Нужен, чтобы сценарий и интерфейс работали без ключа YandexGPT.
+ * Нужен, чтобы сценарий и интерфейс работали без кредов GigaChat.
  */
 @Component
 public class HeuristicAssessor implements Assessor {

@@ -3,7 +3,7 @@ package ru.smartlearn.mentor.llm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ru.smartlearn.mentor.config.YandexProperties;
+import ru.smartlearn.mentor.config.GigaChatProperties;
 import ru.smartlearn.mentor.dialog.MentorSession;
 import ru.smartlearn.mentor.dialog.Phase;
 import ru.smartlearn.mentor.dialog.Role;
@@ -42,7 +42,7 @@ public class DialogueCoach {
 			В scores включай только компетенции, которые ответ реально затронул. id копируй из карты.
 			""";
 
-	private final YandexProperties properties;
+	private final GigaChatProperties properties;
 	private final HeuristicAssessor heuristicAssessor;
 	private final LlmClient llmClient;
 	private final CompetencyMap competencyMap;
@@ -52,13 +52,13 @@ public class DialogueCoach {
 	/**
 	 * Собирает наставника диалога.
 	 *
-	 * @param properties ключ YandexGPT
+	 * @param properties креды GigaChat
 	 * @param heuristicAssessor запасная оценка текста
 	 * @param llmClient клиент модели, может быть заглушкой
 	 * @param competencyMap карта компетенций и бонусные кейсы
 	 */
 	public DialogueCoach(
-			YandexProperties properties,
+			GigaChatProperties properties,
 			HeuristicAssessor heuristicAssessor,
 			LlmClient llmClient,
 			CompetencyMap competencyMap
@@ -76,7 +76,7 @@ public class DialogueCoach {
 	 */
 	public static DialogueCoach heuristicOnly() {
 		return new DialogueCoach(
-				new YandexProperties("", "", "", "", "Api-Key", 0, 200),
+				new GigaChatProperties("", "", "", "", "", "", 0, 200),
 				new HeuristicAssessor(),
 				(system, user) -> "{}",
 				new CompetencyMap()
@@ -273,10 +273,10 @@ public class DialogueCoach {
 		if (properties.configured() && llmClient != null) {
 			try {
 				TurnGrade graded = fromModel(session, focus, answer);
-				session.markScoredBy("yandex");
+				session.markScoredBy("gigachat");
 				return graded;
 			} catch (RuntimeException exception) {
-				log.warn("YandexGPT не оценил реплику, считаю локально: {}", exception.getMessage());
+				log.warn("GigaChat не оценил реплику, считаю локально: {}", exception.getMessage());
 			}
 		}
 		session.markScoredBy("heuristic");
@@ -313,7 +313,9 @@ public class DialogueCoach {
 			}
 		}
 		if (score < 0) {
-			throw new IllegalStateException("Нет оценки для " + focus.id());
+			int local = heuristicAssessor.scoreAnswer(answer);
+			score = local;
+			reason = "Модель не вернула балл этой темы. Локально: " + heuristicAssessor.explain(local);
 		}
 		if (reason.isBlank()) {
 			reason = heuristicAssessor.explain(score);

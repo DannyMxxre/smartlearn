@@ -3,31 +3,31 @@ package ru.smartlearn.mentor.web;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.smartlearn.mentor.config.YandexProperties;
+import ru.smartlearn.mentor.config.GigaChatProperties;
 
 /**
- * Сообщает интерфейсу, подключён ли YandexGPT.
+ * Сообщает интерфейсу, подключён ли GigaChat.
  */
 @RestController
 @RequestMapping("/api/status")
 public class StatusController {
 
-	private final YandexProperties properties;
+	private final GigaChatProperties properties;
 
 	/**
-	 * Берёт настройки облака, чтобы проверить наличие ключа.
+	 * Берёт настройки GigaChat, чтобы проверить наличие кредов.
 	 *
-	 * @param properties ключ и каталог YandexGPT
+	 * @param properties Client ID, Scope и ключ авторизации
 	 */
-	public StatusController(YandexProperties properties) {
+	public StatusController(GigaChatProperties properties) {
 		this.properties = properties;
 	}
 
 	/**
-	 * Возвращает, заданы ли ключ и каталог.
+	 * Возвращает, заданы ли все три кабинетных значения.
 	 * Сам ключ в ответ не входит.
 	 *
-	 * @return флаг подключения YandexGPT
+	 * @return флаг подключения GigaChat
 	 */
 	@GetMapping
 	public StatusResponse status() {

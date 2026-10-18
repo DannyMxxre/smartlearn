@@ -128,7 +128,7 @@
           <span id="ai-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
           <span id="ai-status-text" class="text-gray-400">проверяю</span>
         </div>
-        <span class="text-gray-600">YandexGPT</span>
+        <span class="text-gray-600">GigaChat</span>
       </div>
     </div>
   </aside>
@@ -202,7 +202,7 @@
       messagesEl.replaceChildren();
       resetSidebar();
       document.getElementById("phase-label").textContent = "Подключение";
-      refreshYandexStatus();
+      refreshGigaChatStatus();
       postMessage("", false);
     }
 
@@ -451,7 +451,7 @@
       }
     }
 
-    async function refreshYandexStatus() {
+    async function refreshGigaChatStatus() {
       try {
         const response = await fetch("/api/status");
         if (!response.ok) {
@@ -459,7 +459,7 @@
           return;
         }
         const data = await response.json();
-        if (data.yandexConnected) {
+        if (data.gigachatConnected) {
           setStatus("on", "подключено");
         } else {
           setStatus("off", "не подключено");
