@@ -20,8 +20,8 @@
 
 ## Архитектура
 - Backend: Java + Spring Boot
-- Frontend: React + Vite (делаем в Cursor)
-- LLM: YandexGPT (Yandex Cloud / AI Studio, OpenAI-совместимый API)
+- Frontend: React + Vite
+- LLM: GigaChat (Gigachat, OpenAI-совместимый API)
 - Сессии: in-memory (ConcurrentHashMap)
 - Данные: только выдуманные
 
