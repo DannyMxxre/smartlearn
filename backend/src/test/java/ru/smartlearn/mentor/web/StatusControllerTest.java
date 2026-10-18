@@ -11,9 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Проверяет, что интерфейс узнаёт реальное состояние кредов GigaChat.
+ * Проверяет, что без кредов интерфейс видит GigaChat как отключённый.
+ * Пустые свойства перекрывают переменные сборки, иначе статус на CI становится true.
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+		"gigachat.client-id=",
+		"gigachat.scope=",
+		"gigachat.authorization-key="
+})
 @AutoConfigureMockMvc
 class StatusControllerTest {
 
